@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom gradients */
+.gradient-primary {
+  @apply bg-gradient-to-r from-emerald-500 to-teal-600;
+}
+
+.gradient-secondary {
+  @apply bg-gradient-to-r from-blue-500 to-indigo-600;
+}
+
+.gradient-accent {
+  @apply bg-gradient-to-r from-purple-500 to-pink-600;
+}
+
+/* Animations */
+.hover-scale {
+  @apply transform transition-transform hover:scale-105;
+}
+
+.hover-glow {
+  @apply transition-all hover:shadow-lg hover:shadow-emerald-100;
+}
+
+/* Dark mode enhancements */
+.dark .gradient-primary {
+  @apply from-emerald-600 to-teal-700;
+}
+
+.dark .gradient-secondary {
+  @apply from-blue-600 to-indigo-700;
+}
+
+.dark .gradient-accent {
+  @apply from-purple-600 to-pink-700;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-100 dark:bg-gray-800;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-emerald-500 rounded-full hover:bg-emerald-600;
+}
