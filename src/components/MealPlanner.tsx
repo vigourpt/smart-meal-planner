@@ -1,7 +1,9 @@
 import React from 'react';
-import { Plus, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Calendar, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { RecipeSelector } from './RecipeSelector';
-import type { Recipe } from '../types';
+import { useStore } from '../lib/store';
+import { generateFullMealPlan } from '../lib/openai';
+import type { Recipe, MealPlan } from '../types';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner'];
@@ -10,7 +12,16 @@ export function MealPlanner() {
   const [currentWeek, setCurrentWeek] = React.useState(new Date());
   const [isRecipeSelectorOpen, setIsRecipeSelectorOpen] = React.useState(false);
   const [selectedSlot, setSelectedSlot] = React.useState<{ day: string; mealType: string } | null>(null);
-  const [meals, setMeals] = React.useState<Record<string, Record<string, Recipe>>>({});
+  const [isGenerating, setIsGenerating] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+
+  const {
+    mealPlan,
+    updateMealPlan,
+    preferences,
+    generateShoppingListFromMealPlan,
+    apiKey
+  } = useStore();
 
   const navigateWeek = (direction: 'prev' | 'next') => {
     const newDate = new Date(currentWeek);
@@ -19,16 +30,40 @@ export function MealPlanner() {
   };
 
   const handleMealSelect = (recipe: Recipe) => {
-    if (selectedSlot) {
-      setMeals(prev => ({
-        ...prev,
-        [selectedSlot.day]: {
-          ...prev[selectedSlot.day],
-          [selectedSlot.mealType]: recipe
+    if (selectedSlot && mealPlan) {
+      const updatedMealPlan: MealPlan = {
+        ...mealPlan,
+        meals: {
+          ...mealPlan.meals,
+          [selectedSlot.day]: {
+            ...mealPlan.meals[selectedSlot.day],
+            [selectedSlot.mealType.toLowerCase()]: recipe
+          }
         }
-      }));
+      };
+      updateMealPlan(updatedMealPlan);
+      generateShoppingListFromMealPlan(updatedMealPlan);
       setIsRecipeSelectorOpen(false);
       setSelectedSlot(null);
+    }
+  };
+
+  const generateNewMealPlan = async () => {
+    if (!apiKey) {
+      setError('Please configure your OpenAI API key in settings first.');
+      return;
+    }
+
+    try {
+      setIsGenerating(true);
+      setError(null);
+      const newMealPlan = await generateFullMealPlan(preferences);
+      updateMealPlan(newMealPlan);
+      generateShoppingListFromMealPlan(newMealPlan);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate meal plan');
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -55,8 +90,28 @@ export function MealPlanner() {
           >
             <ChevronRight className="h-5 w-5" />
           </button>
+          <button
+            onClick={generateNewMealPlan}
+            disabled={isGenerating}
+            className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+          >
+            {isGenerating ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                Generating...
+              </>
+            ) : (
+              'Generate New Plan'
+            )}
+          </button>
         </div>
       </div>
+
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 text-red-700 rounded-lg">
+          {error}
+        </div>
+      )}
 
       <div className="overflow-x-auto">
         <table className="w-full">
@@ -81,7 +136,7 @@ export function MealPlanner() {
                     <MealSlot
                       day={day}
                       mealType={mealType}
-                      meal={meals[day]?.[mealType]}
+                      meal={mealPlan?.meals[day]?.[mealType.toLowerCase()]}
                       onAddMeal={() => {
                         setSelectedSlot({ day, mealType });
                         setIsRecipeSelectorOpen(true);

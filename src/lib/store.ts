@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { UserPreferences, MealPlan, Recipe } from '../types';
+import type { UserPreferences, MealPlan, Recipe, ShoppingList } from '../types';
 
 interface Settings {
   currency: {
@@ -19,12 +19,16 @@ interface StoreState {
   mealPlan: MealPlan | null;
   recipes: Recipe[];
   apiKey: string;
+  shoppingList: ShoppingList | null;
   updateSettings: (settings: Partial<Settings>) => void;
   updatePreferences: (preferences: Partial<UserPreferences>) => void;
   updateMealPlan: (mealPlan: MealPlan) => void;
   addRecipe: (recipe: Recipe) => void;
   removeRecipe: (recipeId: string) => void;
   setApiKey: (apiKey: string) => void;
+  updateShoppingList: (list: ShoppingList) => void;
+  resetShoppingListSpending: () => void;
+  generateShoppingListFromMealPlan: (mealPlan: MealPlan) => void;
 }
 
 export const useStore = create<StoreState>()(
@@ -49,6 +53,7 @@ export const useStore = create<StoreState>()(
       mealPlan: null,
       recipes: [],
       apiKey: '',
+      shoppingList: null,
       updateSettings: (newSettings) =>
         set((state) => ({
           settings: { ...state.settings, ...newSettings }
@@ -72,7 +77,66 @@ export const useStore = create<StoreState>()(
       setApiKey: (apiKey) =>
         set(() => ({
           apiKey
-        }))
+        })),
+      updateShoppingList: (list) =>
+        set(() => ({
+          shoppingList: list
+        })),
+      resetShoppingListSpending: () =>
+        set((state) => ({
+          shoppingList: state.shoppingList ? {
+            ...state.shoppingList,
+            estimatedTotal: 0,
+            items: state.shoppingList.items.map(item => ({
+              ...item,
+              checked: false
+            }))
+          } : null
+        })),
+      generateShoppingListFromMealPlan: (mealPlan) =>
+        set((state) => {
+          // Extract all ingredients from the meal plan's recipes
+          const allIngredients = Object.values(mealPlan.meals).flatMap(dayMeals =>
+            Object.values(dayMeals).flatMap(recipe =>
+              recipe.ingredients.map(ingredient => ({
+                ...ingredient,
+                recipes: [recipe.name]
+              }))
+            )
+          );
+
+          // Combine duplicate ingredients and merge their recipes
+          const combinedIngredients = allIngredients.reduce((acc, curr) => {
+            const existing = acc.find(item => 
+              item.name === curr.name && 
+              item.unit === curr.unit
+            );
+
+            if (existing) {
+              existing.amount += curr.amount;
+              existing.estimatedCost += curr.estimatedCost;
+              existing.recipes = [...new Set([...existing.recipes, ...curr.recipes])];
+              return acc;
+            }
+
+            return [...acc, { ...curr, checked: false }];
+          }, [] as any[]);
+
+          const totalCost = combinedIngredients.reduce(
+            (sum, item) => sum + item.estimatedCost,
+            0
+          );
+
+          return {
+            shoppingList: {
+              id: crypto.randomUUID(),
+              weekOf: mealPlan.weekStartDate,
+              items: combinedIngredients,
+              totalBudget: state.preferences.weeklyBudget,
+              estimatedTotal: totalCost
+            }
+          };
+        })
     }),
     {
       name: 'meal-planner-store'

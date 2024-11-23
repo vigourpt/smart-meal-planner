@@ -1,8 +1,8 @@
 import React from 'react';
-import { CheckCircle2, Circle, DollarSign, ShoppingBag, ArrowDownToLine, Filter } from 'lucide-react';
+import { CheckCircle2, Circle, DollarSign, ShoppingBag, ArrowDownToLine, Filter, RefreshCw } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { formatCurrency } from '../lib/currency';
-import type { ShoppingList, ShoppingItem } from '../types';
+import type { ShoppingList as ShoppingListType, ShoppingItem } from '../types';
 
 const CATEGORIES = [
   'Produce',
@@ -16,30 +16,45 @@ const CATEGORIES = [
 
 export function ShoppingList() {
   const currency = useStore(state => state.settings.currency);
-  const [list, setList] = React.useState<ShoppingList>({
-    id: '1',
-    weekOf: new Date(),
-    items: generateSampleItems(),
-    totalBudget: 150,
-    estimatedTotal: 120.50
-  });
-
+  const shoppingList = useStore(state => state.shoppingList);
+  const updateShoppingList = useStore(state => state.updateShoppingList);
+  const resetShoppingListSpending = useStore(state => state.resetShoppingListSpending);
   const [selectedCategory, setSelectedCategory] = React.useState<string>('all');
 
   const toggleItem = (itemId: string) => {
-    setList(prev => ({
-      ...prev,
-      items: prev.items.map(item =>
+    if (!shoppingList) return;
+
+    const updatedList: ShoppingListType = {
+      ...shoppingList,
+      items: shoppingList.items.map(item =>
         item.id === itemId ? { ...item, checked: !item.checked } : item
-      )
-    }));
+      ),
+      estimatedTotal: shoppingList.items.reduce((total, item) => {
+        if (item.id === itemId) {
+          return total + (item.checked ? -item.estimatedCost : item.estimatedCost);
+        }
+        return total + (item.checked ? item.estimatedCost : 0);
+      }, 0)
+    };
+
+    updateShoppingList(updatedList);
   };
 
-  const filteredItems = list.items.filter(item => 
+  const filteredItems = shoppingList?.items.filter(item => 
     selectedCategory === 'all' || item.category === selectedCategory
-  );
+  ) || [];
 
-  const progress = (list.estimatedTotal / list.totalBudget) * 100;
+  const progress = shoppingList ? (shoppingList.estimatedTotal / shoppingList.totalBudget) * 100 : 0;
+
+  if (!shoppingList) {
+    return (
+      <div className="bg-white rounded-xl shadow-lg p-6">
+        <div className="text-center text-gray-500">
+          No shopping list available. Generate a meal plan to create a shopping list.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-white rounded-xl shadow-lg p-6">
@@ -48,10 +63,19 @@ export function ShoppingList() {
           <ShoppingBag className="h-6 w-6 text-emerald-600" />
           <h2 className="text-2xl font-bold text-gray-900">Shopping List</h2>
         </div>
-        <button className="flex items-center px-4 py-2 text-emerald-600 hover:bg-emerald-50 rounded-lg">
-          <ArrowDownToLine className="h-5 w-5 mr-2" />
-          Export List
-        </button>
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={resetShoppingListSpending}
+            className="flex items-center px-4 py-2 text-emerald-600 hover:bg-emerald-50 rounded-lg"
+          >
+            <RefreshCw className="h-5 w-5 mr-2" />
+            Reset Spending
+          </button>
+          <button className="flex items-center px-4 py-2 text-emerald-600 hover:bg-emerald-50 rounded-lg">
+            <ArrowDownToLine className="h-5 w-5 mr-2" />
+            Export List
+          </button>
+        </div>
       </div>
 
       {/* Budget Progress */}
@@ -59,12 +83,12 @@ export function ShoppingList() {
         <div className="flex justify-between items-center mb-2">
           <span className="text-sm font-medium text-gray-700">Budget Progress</span>
           <span className="text-sm font-medium text-emerald-600">
-            {formatCurrency(list.estimatedTotal, currency.code)} / {formatCurrency(list.totalBudget, currency.code)}
+            {formatCurrency(shoppingList.estimatedTotal, currency.code)} / {formatCurrency(shoppingList.totalBudget, currency.code)}
           </span>
         </div>
         <div className="w-full bg-gray-200 rounded-full h-2.5">
           <div
-            className="bg-emerald-600 h-2.5 rounded-full"
+            className={`h-2.5 rounded-full ${progress > 100 ? 'bg-red-600' : 'bg-emerald-600'}`}
             style={{ width: `${Math.min(progress, 100)}%` }}
           />
         </div>
@@ -135,49 +159,4 @@ export function ShoppingList() {
       </div>
     </div>
   );
-}
-
-function generateSampleItems(): ShoppingItem[] {
-  return [
-    {
-      id: '1',
-      name: 'Organic Spinach',
-      amount: 2,
-      unit: 'bags',
-      category: 'Produce',
-      estimatedCost: 5.99,
-      checked: false,
-      recipes: ['Green Smoothie', 'Spinach Salad']
-    },
-    {
-      id: '2',
-      name: 'Chicken Breast',
-      amount: 2,
-      unit: 'lbs',
-      category: 'Meat & Seafood',
-      estimatedCost: 12.99,
-      checked: false,
-      recipes: ['Grilled Chicken Salad', 'Chicken Stir Fry']
-    },
-    {
-      id: '3',
-      name: 'Greek Yogurt',
-      amount: 32,
-      unit: 'oz',
-      category: 'Dairy & Eggs',
-      estimatedCost: 4.99,
-      checked: true,
-      recipes: ['Breakfast Parfait']
-    },
-    {
-      id: '4',
-      name: 'Quinoa',
-      amount: 1,
-      unit: 'lb',
-      category: 'Pantry',
-      estimatedCost: 6.99,
-      checked: false,
-      recipes: ['Buddha Bowl', 'Quinoa Salad']
-    }
-  ];
 }
