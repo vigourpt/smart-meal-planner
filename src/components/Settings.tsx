@@ -7,6 +7,7 @@ import { CURRENCIES } from '../lib/constants';
 export function Settings() {
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = React.useState(false);
   const { settings, updateSettings } = useStore();
+  const apiKey = useStore(state => state.apiKey);
 
   const handleCurrencyChange = (currencyCode: string) => {
     const currency = CURRENCIES.find(c => c.code === currencyCode);
@@ -32,12 +33,19 @@ export function Settings() {
             <Key className="h-5 w-5 mr-2 text-emerald-600" />
             API Configuration
           </h3>
-          <button
-            onClick={() => setIsApiKeyModalOpen(true)}
-            className="px-4 py-2 border border-emerald-600 text-emerald-600 rounded-lg hover:bg-emerald-50"
-          >
-            Configure OpenAI API Key
-          </button>
+          <div className="space-y-2">
+            <button
+              onClick={() => setIsApiKeyModalOpen(true)}
+              className="px-4 py-2 border border-emerald-600 text-emerald-600 rounded-lg hover:bg-emerald-50"
+            >
+              {apiKey ? 'Update OpenAI API Key' : 'Configure OpenAI API Key'}
+            </button>
+            {apiKey && (
+              <div className="text-sm text-gray-600">
+                API key is configured
+              </div>
+            )}
+          </div>
         </section>
 
         <section>
@@ -131,8 +139,8 @@ export function Settings() {
                 <input
                   type="checkbox"
                   className="sr-only peer"
-                  checked={settings.darkMode}
-                  onChange={(e) => updateSettings({ darkMode: e.target.checked })}
+                  checked={settings.theme === 'dark'}
+                  onChange={(e) => updateSettings({ theme: e.target.checked ? 'dark' : 'light' })}
                 />
                 <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
               </label>

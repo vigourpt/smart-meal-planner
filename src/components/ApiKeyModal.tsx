@@ -1,6 +1,7 @@
 import React from 'react';
 import { Key } from 'lucide-react';
 import { useStore } from '../lib/store';
+import { initializeOpenAI } from '../lib/openai';
 
 interface ApiKeyModalProps {
   isOpen: boolean;
@@ -9,14 +10,21 @@ interface ApiKeyModalProps {
 
 export function ApiKeyModal({ isOpen, onClose }: ApiKeyModalProps) {
   const [apiKey, setApiKey] = React.useState('');
+  const [error, setError] = React.useState<string | null>(null);
   const setStoreApiKey = useStore(state => state.setApiKey);
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setStoreApiKey(apiKey);
-    onClose();
+    try {
+      initializeOpenAI(apiKey);
+      setStoreApiKey(apiKey);
+      setError(null);
+      onClose();
+    } catch (err) {
+      setError('Failed to initialize OpenAI client. Please check your API key.');
+    }
   };
 
   return (
@@ -42,6 +50,12 @@ export function ApiKeyModal({ isOpen, onClose }: ApiKeyModalProps) {
               required
             />
           </div>
+
+          {error && (
+            <div className="text-sm text-red-600">
+              {error}
+            </div>
+          )}
 
           <div className="text-sm text-gray-500">
             Your API key is stored locally and never sent to our servers.

@@ -10,7 +10,7 @@ interface Settings {
   theme: 'light' | 'dark';
   emailNotifications: boolean;
   pushNotifications: boolean;
-  openaiApiKey: string;
+  language: string;
 }
 
 interface StoreState {
@@ -18,11 +18,13 @@ interface StoreState {
   preferences: UserPreferences;
   mealPlan: MealPlan | null;
   recipes: Recipe[];
+  apiKey: string;
   updateSettings: (settings: Partial<Settings>) => void;
   updatePreferences: (preferences: Partial<UserPreferences>) => void;
   updateMealPlan: (mealPlan: MealPlan) => void;
   addRecipe: (recipe: Recipe) => void;
   removeRecipe: (recipeId: string) => void;
+  setApiKey: (apiKey: string) => void;
 }
 
 export const useStore = create<StoreState>()(
@@ -36,7 +38,7 @@ export const useStore = create<StoreState>()(
         theme: 'light',
         emailNotifications: false,
         pushNotifications: false,
-        openaiApiKey: ''
+        language: 'en-US'
       },
       preferences: {
         dietaryPreferences: [],
@@ -46,6 +48,7 @@ export const useStore = create<StoreState>()(
       },
       mealPlan: null,
       recipes: [],
+      apiKey: '',
       updateSettings: (newSettings) =>
         set((state) => ({
           settings: { ...state.settings, ...newSettings }
@@ -65,6 +68,10 @@ export const useStore = create<StoreState>()(
       removeRecipe: (recipeId) =>
         set((state) => ({
           recipes: state.recipes.filter((r) => r.id !== recipeId)
+        })),
+      setApiKey: (apiKey) =>
+        set(() => ({
+          apiKey
         }))
     }),
     {
