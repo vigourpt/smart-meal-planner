@@ -13,8 +13,6 @@ export function ApiKeyModal({ isOpen, onClose }: ApiKeyModalProps) {
   const [error, setError] = React.useState<string | null>(null);
   const setStoreApiKey = useStore(state => state.setApiKey);
 
-  if (!isOpen) return null;
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -26,6 +24,12 @@ export function ApiKeyModal({ isOpen, onClose }: ApiKeyModalProps) {
       setError('Failed to initialize OpenAI client. Please check your API key.');
     }
   };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setApiKey(e.target.value);
+  };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -44,10 +48,11 @@ export function ApiKeyModal({ isOpen, onClose }: ApiKeyModalProps) {
               type="password"
               id="apiKey"
               value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
+              onChange={handleChange}
               className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               placeholder="sk-..."
               required
+              autoComplete="new-password"
             />
           </div>
 
