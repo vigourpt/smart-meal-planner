@@ -1,7 +1,7 @@
 import React from 'react';
 import { Search, Filter, Loader2 } from 'lucide-react';
 import { MealCard } from './MealCard';
-import { generateMealSuggestions } from '../lib/openai';
+import { generateRecipeSuggestions } from '../lib/openai';
 import { useStore } from '../lib/store';
 import type { Recipe } from '../types';
 
@@ -11,14 +11,24 @@ interface RecipeSelectorProps {
   onSelect: (recipe: Recipe) => void;
 }
 
-export function RecipeSelector({ isOpen, onClose, onSelect }: RecipeSelectorProps) {
+interface StoreState {
+  preferences: {
+    dietaryPreferences: string[];
+    allergies: string[];
+    weeklyBudget: number;
+    healthGoals?: string[];
+  };
+  apiKey: string;
+}
+
+export function RecipeSelector({ isOpen, onClose, onSelect }: RecipeSelectorProps): JSX.Element | null {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [loading, setLoading] = React.useState(false);
   const [suggestions, setSuggestions] = React.useState<Recipe[]>([]);
   const [error, setError] = React.useState<string | null>(null);
   
-  const preferences = useStore(state => state.preferences);
-  const apiKey = useStore(state => state.apiKey);
+  const preferences = useStore((state: StoreState) => state.preferences);
+  const apiKey = useStore((state: StoreState) => state.apiKey);
 
   React.useEffect(() => {
     if (isOpen && apiKey) {
@@ -35,7 +45,7 @@ export function RecipeSelector({ isOpen, onClose, onSelect }: RecipeSelectorProp
     try {
       setLoading(true);
       setError(null);
-      const suggestions = await generateMealSuggestions(preferences);
+      const suggestions = await generateRecipeSuggestions(preferences);
       setSuggestions(suggestions);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load suggestions');
@@ -67,7 +77,7 @@ export function RecipeSelector({ isOpen, onClose, onSelect }: RecipeSelectorProp
                 type="text"
                 placeholder="Search recipes..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               />
             </div>
@@ -93,12 +103,13 @@ export function RecipeSelector({ isOpen, onClose, onSelect }: RecipeSelectorProp
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {suggestions.map((recipe, index) => (
-                <MealCard
-                  key={index}
-                  recipe={recipe}
-                  onSelect={onSelect}
-                />
+              {suggestions.map((recipe: Recipe) => (
+                <div key={recipe.id || Math.random().toString()}>
+                  <MealCard
+                    recipe={recipe}
+                    onSelect={onSelect}
+                  />
+                </div>
               ))}
             </div>
           )}
