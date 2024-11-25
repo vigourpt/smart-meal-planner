@@ -6,10 +6,22 @@ import { ShoppingList } from './components/ShoppingList';
 import { Profile } from './components/Profile';
 import { Settings } from './components/Settings';
 import { useStore } from './lib/store';
+import { initializeOpenAI } from './lib/openai';
 
 function App() {
   const [activeTab, setActiveTab] = React.useState<'planner' | 'shopping' | 'profile' | 'settings'>('planner');
   const darkMode = useStore(state => state.settings.darkMode);
+  const apiKey = useStore(state => state.apiKey);
+
+  React.useEffect(() => {
+    if (apiKey) {
+      try {
+        initializeOpenAI(apiKey);
+      } catch (err) {
+        console.error('Failed to initialize OpenAI:', err);
+      }
+    }
+  }, [apiKey]);
 
   return (
     <div className={`min-h-screen ${darkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>

@@ -11,6 +11,7 @@ interface Settings {
   emailNotifications: boolean;
   pushNotifications: boolean;
   language: string;
+  darkMode: boolean;
 }
 
 interface StoreState {
@@ -42,7 +43,8 @@ export const useStore = create<StoreState>()(
         theme: 'light',
         emailNotifications: false,
         pushNotifications: false,
-        language: 'en-US'
+        language: 'en-US',
+        darkMode: false
       },
       preferences: {
         dietaryPreferences: [],
