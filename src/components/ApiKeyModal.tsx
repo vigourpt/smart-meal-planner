@@ -10,7 +10,6 @@ interface ApiKeyModalProps {
 
 export function ApiKeyModal({ isOpen, onClose }: ApiKeyModalProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
-  const [apiKey, setApiKey] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
   const setStoreApiKey = useStore(state => state.setApiKey);
 
@@ -22,6 +21,8 @@ export function ApiKeyModal({ isOpen, onClose }: ApiKeyModalProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const apiKey = inputRef.current?.value || '';
+
     if (!apiKey.trim()) {
       setError('Please enter an API key');
       return;
@@ -31,16 +32,21 @@ export function ApiKeyModal({ isOpen, onClose }: ApiKeyModalProps) {
       initializeOpenAI(apiKey);
       setStoreApiKey(apiKey);
       setError(null);
-      setApiKey('');
+      if (inputRef.current) {
+        inputRef.current.value = '';
+      }
       onClose();
     } catch (err) {
       setError('Failed to initialize OpenAI client. Please check your API key.');
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setApiKey(e.target.value);
-    if (error) setError(null);
+  const handleCancel = () => {
+    setError(null);
+    if (inputRef.current) {
+      inputRef.current.value = '';
+    }
+    onClose();
   };
 
   if (!isOpen) return null;
@@ -62,8 +68,7 @@ export function ApiKeyModal({ isOpen, onClose }: ApiKeyModalProps) {
               ref={inputRef}
               type="password"
               id="apiKey"
-              value={apiKey}
-              onChange={handleChange}
+              name="apiKey"
               className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               placeholder="sk-..."
               required
@@ -84,11 +89,7 @@ export function ApiKeyModal({ isOpen, onClose }: ApiKeyModalProps) {
           <div className="flex justify-end space-x-3">
             <button
               type="button"
-              onClick={() => {
-                setApiKey('');
-                setError(null);
-                onClose();
-              }}
+              onClick={handleCancel}
               className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
             >
               Cancel
