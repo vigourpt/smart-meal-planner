@@ -17,6 +17,12 @@ export async function generateFullMealPlan(preferences: UserPreferences): Promis
     throw new Error('OpenAI not initialized. Please set your API key in settings.');
   }
 
+  // If using a test key, return sample data
+  if (apiKey.startsWith('sk-test')) {
+    console.log('Using test API key - returning sample data');
+    return generateSampleMealPlan(preferences);
+  }
+
   // Re-initialize OpenAI with current API key
   initializeOpenAI(apiKey);
 
@@ -41,13 +47,15 @@ export async function generateFullMealPlan(preferences: UserPreferences): Promis
       temperature: 0.7,
     });
 
-    // Parse the AI response and convert it to our MealPlan type
     const suggestions = response.choices[0].message.content;
     if (!suggestions) {
       throw new Error('No suggestions received from OpenAI');
     }
     return convertAIResponseToMealPlan(suggestions, preferences);
   } catch (error) {
+    if (error instanceof Error && error.message.includes('401')) {
+      throw new Error('Invalid API key. Please provide a valid OpenAI API key in settings.');
+    }
     console.error('OpenAI API error:', error);
     throw new Error('Failed to generate meal plan. Please try again.');
   }
@@ -57,6 +65,12 @@ export async function generateRecipeSuggestions(preferences: UserPreferences): P
   const apiKey = useStore.getState().apiKey;
   if (!apiKey) {
     throw new Error('OpenAI not initialized. Please set your API key in settings.');
+  }
+
+  // If using a test key, return sample data
+  if (apiKey.startsWith('sk-test')) {
+    console.log('Using test API key - returning sample data');
+    return [generateSampleRecipe(), generateSampleRecipe(), generateSampleRecipe()];
   }
 
   // Re-initialize OpenAI with current API key
@@ -88,41 +102,72 @@ export async function generateRecipeSuggestions(preferences: UserPreferences): P
     }
     return convertAIResponseToRecipes(suggestions);
   } catch (error) {
+    if (error instanceof Error && error.message.includes('401')) {
+      throw new Error('Invalid API key. Please provide a valid OpenAI API key in settings.');
+    }
     console.error('OpenAI API error:', error);
     throw new Error('Failed to generate recipe suggestions. Please try again.');
   }
 }
 
-function convertAIResponseToMealPlan(aiResponse: string, preferences: UserPreferences): MealPlan {
-  // This is a simplified conversion - in a real app, you'd want more robust parsing
+function generateSampleMealPlan(preferences: UserPreferences): MealPlan {
   return {
     id: crypto.randomUUID(),
     weekStartDate: new Date(),
     meals: {
       Monday: {
-        breakfast: generateSampleRecipe(),
-        lunch: generateSampleRecipe(),
-        dinner: generateSampleRecipe()
+        breakfast: generateSampleRecipe('Oatmeal with Berries', ['Breakfast', 'Healthy']),
+        lunch: generateSampleRecipe('Quinoa Salad', ['Lunch', 'Vegetarian']),
+        dinner: generateSampleRecipe('Grilled Chicken', ['Dinner', 'High Protein'])
       },
       Tuesday: {
-        breakfast: generateSampleRecipe(),
-        lunch: generateSampleRecipe(),
-        dinner: generateSampleRecipe()
+        breakfast: generateSampleRecipe('Greek Yogurt Parfait', ['Breakfast', 'High Protein']),
+        lunch: generateSampleRecipe('Mediterranean Bowl', ['Lunch', 'Vegetarian']),
+        dinner: generateSampleRecipe('Baked Salmon', ['Dinner', 'Seafood'])
       },
-      // ... other days
+      Wednesday: {
+        breakfast: generateSampleRecipe('Smoothie Bowl', ['Breakfast', 'Vegan']),
+        lunch: generateSampleRecipe('Turkey Wrap', ['Lunch', 'High Protein']),
+        dinner: generateSampleRecipe('Stir-Fry Tofu', ['Dinner', 'Vegetarian'])
+      },
+      Thursday: {
+        breakfast: generateSampleRecipe('Avocado Toast', ['Breakfast', 'Vegetarian']),
+        lunch: generateSampleRecipe('Chicken Caesar Salad', ['Lunch', 'High Protein']),
+        dinner: generateSampleRecipe('Veggie Pasta', ['Dinner', 'Vegetarian'])
+      },
+      Friday: {
+        breakfast: generateSampleRecipe('Protein Pancakes', ['Breakfast', 'High Protein']),
+        lunch: generateSampleRecipe('Tuna Salad', ['Lunch', 'Seafood']),
+        dinner: generateSampleRecipe('Black Bean Tacos', ['Dinner', 'Vegetarian'])
+      },
+      Saturday: {
+        breakfast: generateSampleRecipe('Breakfast Burrito', ['Breakfast', 'High Protein']),
+        lunch: generateSampleRecipe('Falafel Wrap', ['Lunch', 'Vegetarian']),
+        dinner: generateSampleRecipe('Grilled Fish', ['Dinner', 'Seafood'])
+      },
+      Sunday: {
+        breakfast: generateSampleRecipe('Chia Pudding', ['Breakfast', 'Vegan']),
+        lunch: generateSampleRecipe('Buddha Bowl', ['Lunch', 'Vegetarian']),
+        dinner: generateSampleRecipe('Lentil Curry', ['Dinner', 'Vegan'])
+      }
     }
   };
 }
 
+function convertAIResponseToMealPlan(aiResponse: string, preferences: UserPreferences): MealPlan {
+  // In a real app, we would parse the AI response here
+  return generateSampleMealPlan(preferences);
+}
+
 function convertAIResponseToRecipes(aiResponse: string): Recipe[] {
-  // This is a simplified conversion - in a real app, you'd want more robust parsing
+  // In a real app, we would parse the AI response here
   return [generateSampleRecipe(), generateSampleRecipe(), generateSampleRecipe()];
 }
 
-function generateSampleRecipe(): Recipe {
+function generateSampleRecipe(name: string = "Sample Recipe", tags: string[] = ["Healthy", "Quick"]): Recipe {
   return {
     id: crypto.randomUUID(),
-    name: "Sample Recipe",
+    name,
     ingredients: [{
       id: "1",
       name: "Ingredient",
@@ -141,7 +186,7 @@ function generateSampleRecipe(): Recipe {
     },
     prepTime: 30,
     servings: 4,
-    tags: ["Healthy", "Quick"],
+    tags,
     calories: 400
   };
 }
