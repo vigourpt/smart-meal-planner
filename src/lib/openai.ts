@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { Recipe, UserPreferences, MealPlan } from '../types';
+import { useStore } from './store';
 
 let openai: OpenAI | null = null;
 
@@ -11,8 +12,16 @@ export function initializeOpenAI(apiKey: string) {
 }
 
 export async function generateFullMealPlan(preferences: UserPreferences): Promise<MealPlan> {
-  if (!openai) {
+  const apiKey = useStore.getState().apiKey;
+  if (!apiKey) {
     throw new Error('OpenAI not initialized. Please set your API key in settings.');
+  }
+
+  // Re-initialize OpenAI with current API key
+  initializeOpenAI(apiKey);
+
+  if (!openai) {
+    throw new Error('Failed to initialize OpenAI client.');
   }
 
   const prompt = `Generate a weekly meal plan based on these preferences:
@@ -22,23 +31,39 @@ export async function generateFullMealPlan(preferences: UserPreferences): Promis
     - Health goals: ${preferences.healthGoals?.join(', ')}
   `;
 
-  const response = await openai.chat.completions.create({
-    model: "gpt-4",
-    messages: [{
-      role: "user",
-      content: prompt
-    }],
-    temperature: 0.7,
-  });
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [{
+        role: "user",
+        content: prompt
+      }],
+      temperature: 0.7,
+    });
 
-  // Parse the AI response and convert it to our MealPlan type
-  const suggestions = response.choices[0].message.content;
-  return convertAIResponseToMealPlan(suggestions, preferences);
+    // Parse the AI response and convert it to our MealPlan type
+    const suggestions = response.choices[0].message.content;
+    if (!suggestions) {
+      throw new Error('No suggestions received from OpenAI');
+    }
+    return convertAIResponseToMealPlan(suggestions, preferences);
+  } catch (error) {
+    console.error('OpenAI API error:', error);
+    throw new Error('Failed to generate meal plan. Please try again.');
+  }
 }
 
 export async function generateRecipeSuggestions(preferences: UserPreferences): Promise<Recipe[]> {
-  if (!openai) {
+  const apiKey = useStore.getState().apiKey;
+  if (!apiKey) {
     throw new Error('OpenAI not initialized. Please set your API key in settings.');
+  }
+
+  // Re-initialize OpenAI with current API key
+  initializeOpenAI(apiKey);
+
+  if (!openai) {
+    throw new Error('Failed to initialize OpenAI client.');
   }
 
   const prompt = `Suggest 5 recipes that match these preferences:
@@ -47,16 +72,25 @@ export async function generateRecipeSuggestions(preferences: UserPreferences): P
     - Health goals: ${preferences.healthGoals?.join(', ')}
   `;
 
-  const response = await openai.chat.completions.create({
-    model: "gpt-4",
-    messages: [{
-      role: "user",
-      content: prompt
-    }],
-    temperature: 0.7,
-  });
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [{
+        role: "user",
+        content: prompt
+      }],
+      temperature: 0.7,
+    });
 
-  return convertAIResponseToRecipes(response.choices[0].message.content);
+    const suggestions = response.choices[0].message.content;
+    if (!suggestions) {
+      throw new Error('No suggestions received from OpenAI');
+    }
+    return convertAIResponseToRecipes(suggestions);
+  } catch (error) {
+    console.error('OpenAI API error:', error);
+    throw new Error('Failed to generate recipe suggestions. Please try again.');
+  }
 }
 
 function convertAIResponseToMealPlan(aiResponse: string, preferences: UserPreferences): MealPlan {
@@ -76,9 +110,7 @@ function convertAIResponseToMealPlan(aiResponse: string, preferences: UserPrefer
         dinner: generateSampleRecipe()
       },
       // ... other days
-    },
-    currentSpending: 0,
-    weeklyBudget: preferences.weeklyBudget
+    }
   };
 }
 
