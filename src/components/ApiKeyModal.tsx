@@ -9,16 +9,29 @@ interface ApiKeyModalProps {
 }
 
 export function ApiKeyModal({ isOpen, onClose }: ApiKeyModalProps) {
+  const inputRef = React.useRef<HTMLInputElement>(null);
   const [apiKey, setApiKey] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
   const setStoreApiKey = useStore(state => state.setApiKey);
 
+  React.useEffect(() => {
+    if (isOpen && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isOpen]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!apiKey.trim()) {
+      setError('Please enter an API key');
+      return;
+    }
+
     try {
       initializeOpenAI(apiKey);
       setStoreApiKey(apiKey);
       setError(null);
+      setApiKey('');
       onClose();
     } catch (err) {
       setError('Failed to initialize OpenAI client. Please check your API key.');
@@ -27,6 +40,7 @@ export function ApiKeyModal({ isOpen, onClose }: ApiKeyModalProps) {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setApiKey(e.target.value);
+    if (error) setError(null);
   };
 
   if (!isOpen) return null;
@@ -45,6 +59,7 @@ export function ApiKeyModal({ isOpen, onClose }: ApiKeyModalProps) {
               Enter your OpenAI API key
             </label>
             <input
+              ref={inputRef}
               type="password"
               id="apiKey"
               value={apiKey}
@@ -69,7 +84,11 @@ export function ApiKeyModal({ isOpen, onClose }: ApiKeyModalProps) {
           <div className="flex justify-end space-x-3">
             <button
               type="button"
-              onClick={onClose}
+              onClick={() => {
+                setApiKey('');
+                setError(null);
+                onClose();
+              }}
               className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
             >
               Cancel
