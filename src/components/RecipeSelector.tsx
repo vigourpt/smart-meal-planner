@@ -1,120 +1,109 @@
-import React from 'react';
-import { Search, Filter, Loader2 } from 'lucide-react';
-import { MealCard } from './MealCard';
-import { generateRecipeSuggestions } from '../lib/openai';
-import { useStore } from '../lib/store';
-import type { Recipe } from '../types';
+import React, { useState } from 'react'
+import { X, Search, Plus } from 'lucide-react'
+import { useStore } from '../lib/store'
+
+interface Recipe {
+  name: string
+  ingredients: string[]
+  recipe: string
+  prepTime: number
+  healthScore: number
+}
 
 interface RecipeSelectorProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSelect: (recipe: Recipe) => void;
+  isOpen: boolean
+  onClose: () => void
+  onSelect: (recipe: Recipe) => void
+  day: string
+  mealType: string
 }
 
-interface StoreState {
-  preferences: {
-    dietaryPreferences: string[];
-    allergies: string[];
-    weeklyBudget: number;
-    healthGoals?: string[];
-  };
-  apiKey: string;
-}
+const SAMPLE_RECIPES: Recipe[] = [
+  {
+    name: 'Avocado Toast with Poached Eggs',
+    ingredients: ['bread', 'avocado', 'eggs', 'salt', 'pepper'],
+    recipe: '1. Toast bread\n2. Mash avocado\n3. Poach eggs\n4. Assemble',
+    prepTime: 15,
+    healthScore: 8.5
+  },
+  {
+    name: 'Greek Yogurt Parfait',
+    ingredients: ['greek yogurt', 'granola', 'berries', 'honey'],
+    recipe: '1. Layer yogurt\n2. Add granola\n3. Top with berries\n4. Drizzle honey',
+    prepTime: 5,
+    healthScore: 9.0
+  }
+]
 
-export function RecipeSelector({ isOpen, onClose, onSelect }: RecipeSelectorProps): JSX.Element | null {
-  const [searchTerm, setSearchTerm] = React.useState('');
-  const [loading, setLoading] = React.useState(false);
-  const [suggestions, setSuggestions] = React.useState<Recipe[]>([]);
-  const [error, setError] = React.useState<string | null>(null);
-  
-  const preferences = useStore((state: StoreState) => state.preferences);
-  const apiKey = useStore((state: StoreState) => state.apiKey);
+export function RecipeSelector({ isOpen, onClose, onSelect, day, mealType }: RecipeSelectorProps) {
+  const [searchTerm, setSearchTerm] = useState('')
+  const [recipes] = useState<Recipe[]>(SAMPLE_RECIPES)
 
-  React.useEffect(() => {
-    if (isOpen && apiKey) {
-      loadSuggestions();
-    }
-  }, [isOpen, apiKey]);
+  const filteredRecipes = recipes.filter(recipe =>
+    recipe.name.toLowerCase().includes(searchTerm.toLowerCase())
+  )
 
-  const loadSuggestions = async () => {
-    if (!apiKey) {
-      setError('Please configure your OpenAI API key in settings first.');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-      const suggestions = await generateRecipeSuggestions(preferences);
-      setSuggestions(suggestions);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load suggestions');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
-        <div className="p-6 border-b">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold text-gray-900">Select a Recipe</h2>
-            <button
-              onClick={onClose}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              ×
-            </button>
-          </div>
-          
-          <div className="flex space-x-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-              <input
-                type="text"
-                placeholder="Search recipes..."
-                value={searchTerm}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-              />
-            </div>
-            <button 
-              onClick={loadSuggestions}
-              className="flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
-            >
-              {loading ? (
-                <Loader2 className="h-5 w-5 animate-spin mr-2" />
-              ) : (
-                'Generate New Suggestions'
-              )}
-            </button>
-          </div>
+    <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full">
+        <div className="px-4 py-3 border-b border-gray-200 flex justify-between items-center">
+          <h3 className="text-lg font-medium">
+            Select Recipe for {day} - {mealType}
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-500"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
-          {error ? (
-            <div className="text-red-600 text-center py-4">{error}</div>
-          ) : loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+        <div className="p-4">
+          {/* Search */}
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-gray-400" />
             </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {suggestions.map((recipe: Recipe) => (
-                <div key={recipe.id || Math.random().toString()}>
-                  <MealCard
-                    recipe={recipe}
-                    onSelect={onSelect}
-                  />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
+              placeholder="Search recipes..."
+            />
+          </div>
+
+          {/* Recipe List */}
+          <div className="mt-4 space-y-2 max-h-96 overflow-y-auto">
+            {filteredRecipes.map((recipe, index) => (
+              <div
+                key={index}
+                className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer"
+                onClick={() => onSelect(recipe)}
+              >
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="text-sm font-medium">{recipe.name}</h4>
+                    <p className="mt-1 text-xs text-gray-500">
+                      {recipe.ingredients.join(', ')}
+                    </p>
+                  </div>
+                  <button className="flex items-center text-emerald-600 hover:text-emerald-700">
+                    <Plus className="h-5 w-5" />
+                  </button>
                 </div>
-              ))}
-            </div>
-          )}
+                <div className="mt-2 flex items-center space-x-4 text-xs text-gray-500">
+                  <span>{recipe.prepTime} min prep</span>
+                  <span>•</span>
+                  <span>Health score: {recipe.healthScore}/10</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
-  );
+  )
 }

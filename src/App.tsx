@@ -16,33 +16,31 @@ function App() {
 
   return (
     <div className={`min-h-screen ${darkMode ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
-      <div className="flex h-screen">
-        {/* Sidebar Navigation */}
-        <div className="w-64 bg-white shadow-lg">
-          <div className="p-4">
-            <h1 className="text-xl font-bold text-gray-800">Smart Meal Planner</h1>
+      {/* Header */}
+      <header className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <h1 className="text-xl font-semibold text-emerald-600">Smart Meal Planner</h1>
+            <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
           </div>
-          <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
         </div>
+      </header>
 
-        {/* Main Content */}
-        <main className="flex-1 overflow-auto">
-          <div className="max-w-7xl mx-auto px-8 py-6">
-            {activeTab === 'planner' && (
-              <>
-                <Dashboard />
-                <section className="mt-8">
-                  <MealPlanner />
-                </section>
-              </>
-            )}
-            
-            {activeTab === 'shopping' && <ShoppingList />}
-            {activeTab === 'profile' && <Profile />}
-            {activeTab === 'settings' && <Settings />}
-          </div>
-        </main>
-      </div>
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {activeTab === 'planner' && (
+          <>
+            <Dashboard />
+            <section className="mt-8">
+              <MealPlanner />
+            </section>
+          </>
+        )}
+        
+        {activeTab === 'shopping' && <ShoppingList />}
+        {activeTab === 'profile' && <Profile />}
+        {activeTab === 'settings' && <Settings />}
+      </main>
     </div>
   )
 }

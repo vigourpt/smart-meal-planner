@@ -1,6 +1,6 @@
 import React from 'react'
 import { 
-  Home,
+  CalendarDays,
   ShoppingCart,
   User,
   Settings as SettingsIcon
@@ -13,28 +13,31 @@ interface NavigationProps {
 
 export function Navigation({ activeTab, onTabChange }: NavigationProps) {
   const navItems = [
-    { id: 'planner', label: 'Meal Planner', icon: Home },
+    { id: 'planner', label: 'Meal Plan', icon: CalendarDays },
     { id: 'shopping', label: 'Shopping List', icon: ShoppingCart },
     { id: 'profile', label: 'Profile', icon: User },
     { id: 'settings', label: 'Settings', icon: SettingsIcon }
   ]
 
   return (
-    <nav className="space-y-1">
-      {navItems.map(({ id, label, icon: Icon }) => (
-        <button
-          key={id}
-          onClick={() => onTabChange(id as any)}
-          className={`w-full flex items-center px-6 py-3 text-sm font-medium transition-colors duration-150 ${
-            activeTab === id
-              ? 'text-blue-600 bg-blue-50 border-r-4 border-blue-600'
-              : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'
-          }`}
-        >
-          <Icon className="h-5 w-5 mr-3" />
-          {label}
-        </button>
-      ))}
+    <nav className="flex space-x-4">
+      {navItems.map(({ id, label, icon: Icon }) => {
+        const isActive = activeTab === id
+        return (
+          <button
+            key={id}
+            onClick={() => onTabChange(id as any)}
+            className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150 ${
+              isActive
+                ? 'bg-emerald-100 text-emerald-600'
+                : 'text-gray-600 hover:text-emerald-600 hover:bg-emerald-50'
+            }`}
+          >
+            <Icon className="h-5 w-5 mr-1.5" />
+            {label}
+          </button>
+        )
+      })}
     </nav>
   )
 }
