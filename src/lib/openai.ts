@@ -13,7 +13,7 @@ function getClient() {
   })
 }
 
-export async function generateMealPlan(preferences: string) {
+export async function generateFullMealPlan(preferences: string) {
   try {
     const openai = getClient()
     const completion = await openai.chat.completions.create({
@@ -27,7 +27,7 @@ export async function generateMealPlan(preferences: string) {
           content: `Generate a meal plan based on these preferences: ${preferences}`
         }
       ],
-      model: "gpt-4o-mini-2024-07-18",
+      model: "gpt-3.5-turbo",
     })
 
     return completion.choices[0].message.content

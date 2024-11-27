@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useStore } from '../lib/store'
-import { generateMealPlan } from '../lib/openai'
+import { generateFullMealPlan } from '../lib/openai'
 import { ApiKeyModal } from './ApiKeyModal'
 
 export default function MealPlanner() {
@@ -38,7 +38,7 @@ export default function MealPlanner() {
         Servings: ${preferences.servings}
       `
 
-      const result = await generateMealPlan(preferencesString)
+      const result = await generateFullMealPlan(preferencesString)
       if (result) {
         // Parse the result into a MealPlan object
         const newMealPlan = {
