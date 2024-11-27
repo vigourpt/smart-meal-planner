@@ -16,10 +16,10 @@ export function ShoppingList() {
     resetShoppingListSpending: state.resetShoppingListSpending
   }))
 
-  const estimatedTotal = shoppingList.reduce((total, item) => total + item.price, 0)
+  const estimatedTotal = shoppingList.reduce((total, item) => total + item.ingredient.estimatedCost, 0)
   const remainingTotal = shoppingList
     .filter(item => !item.purchased)
-    .reduce((total, item) => total + item.price, 0)
+    .reduce((total, item) => total + item.ingredient.estimatedCost, 0)
 
   const handleTogglePurchased = (index: number) => {
     const updatedList = [...shoppingList]
@@ -29,19 +29,13 @@ export function ShoppingList() {
 
   const handleUpdatePrice = (index: number, price: number) => {
     const updatedList = [...shoppingList]
-    updatedList[index].price = price
+    updatedList[index].ingredient.estimatedCost = price
     updateShoppingList(updatedList)
   }
 
-  const handleUpdateQuantity = (index: number, quantity: number) => {
+  const handleUpdateAmount = (index: number, amount: string) => {
     const updatedList = [...shoppingList]
-    updatedList[index].quantity = quantity
-    updateShoppingList(updatedList)
-  }
-
-  const handleUpdateUnit = (index: number, unit: string) => {
-    const updatedList = [...shoppingList]
-    updatedList[index].unit = unit
+    updatedList[index].ingredient.amount = amount
     updateShoppingList(updatedList)
   }
 
@@ -95,23 +89,14 @@ export function ShoppingList() {
                     <h3 className={`text-sm font-medium ${
                       item.purchased ? 'text-gray-500 line-through' : 'text-gray-900'
                     }`}>
-                      {item.name}
+                      {item.ingredient.name}
                     </h3>
                     <div className="mt-1 flex items-center gap-2">
                       <input
-                        type="number"
-                        value={item.quantity}
-                        onChange={(e) => handleUpdateQuantity(index, parseFloat(e.target.value) || 0)}
-                        className="w-20 px-2 py-1 text-sm border rounded focus:ring-blue-500 focus:border-blue-500"
-                        min="0"
-                        step="0.1"
-                      />
-                      <input
                         type="text"
-                        value={item.unit}
-                        onChange={(e) => handleUpdateUnit(index, e.target.value)}
+                        value={item.ingredient.amount}
+                        onChange={(e) => handleUpdateAmount(index, e.target.value)}
                         className="w-20 px-2 py-1 text-sm border rounded focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="unit"
                       />
                     </div>
                   </div>
@@ -120,7 +105,7 @@ export function ShoppingList() {
                   <span className="text-sm text-gray-500">{currency}</span>
                   <input
                     type="number"
-                    value={item.price}
+                    value={item.ingredient.estimatedCost}
                     onChange={(e) => handleUpdatePrice(index, parseFloat(e.target.value) || 0)}
                     className="w-24 px-2 py-1 text-sm border rounded focus:ring-blue-500 focus:border-blue-500"
                     step="0.01"

@@ -1,222 +1,109 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { useStore } from '../lib/store'
-import { Plus, X } from 'lucide-react'
+import { Key } from 'lucide-react'
+
+const AVAILABLE_CURRENCIES = [
+  { code: 'USD', symbol: '$', name: 'US Dollar' },
+  { code: 'EUR', symbol: '€', name: 'Euro' },
+  { code: 'GBP', symbol: '£', name: 'British Pound' },
+  { code: 'AUD', symbol: 'A$', name: 'Australian Dollar' },
+  { code: 'CAD', symbol: 'C$', name: 'Canadian Dollar' },
+  { code: 'JPY', symbol: '¥', name: 'Japanese Yen' }
+]
 
 export function Settings() {
-  const { preferences, updatePreferences, currency, apiKey, setApiKey } = useStore(state => ({
-    preferences: state.preferences,
-    updatePreferences: state.updatePreferences,
-    currency: state.settings.currency,
+  const { 
+    apiKey, 
+    setApiKey, 
+    currency, 
+    setCurrency,
+    weeklyBudget,
+    updateWeeklyBudget
+  } = useStore(state => ({
     apiKey: state.settings.apiKey,
-    setApiKey: state.settings.setApiKey
+    setApiKey: state.settings.setApiKey,
+    currency: state.settings.currency,
+    setCurrency: state.settings.setCurrency,
+    weeklyBudget: state.preferences.weeklyBudget,
+    updateWeeklyBudget: state.updateWeeklyBudget
   }))
-
-  const [newDietary, setNewDietary] = useState('')
-  const [newAllergy, setNewAllergy] = useState('')
-  const [newCuisine, setNewCuisine] = useState('')
-
-  const handleAddDietary = () => {
-    if (newDietary.trim()) {
-      updatePreferences({
-        dietary: [...preferences.dietary, newDietary.trim()]
-      })
-      setNewDietary('')
-    }
-  }
-
-  const handleRemoveDietary = (index: number) => {
-    updatePreferences({
-      dietary: preferences.dietary.filter((_, i) => i !== index)
-    })
-  }
-
-  const handleAddAllergy = () => {
-    if (newAllergy.trim()) {
-      updatePreferences({
-        allergies: [...preferences.allergies, newAllergy.trim()]
-      })
-      setNewAllergy('')
-    }
-  }
-
-  const handleRemoveAllergy = (index: number) => {
-    updatePreferences({
-      allergies: preferences.allergies.filter((_, i) => i !== index)
-    })
-  }
-
-  const handleAddCuisine = () => {
-    if (newCuisine.trim()) {
-      updatePreferences({
-        cuisineTypes: [...preferences.cuisineTypes, newCuisine.trim()]
-      })
-      setNewCuisine('')
-    }
-  }
-
-  const handleRemoveCuisine = (index: number) => {
-    updatePreferences({
-      cuisineTypes: preferences.cuisineTypes.filter((_, i) => i !== index)
-    })
-  }
-
-  const handleServingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = parseInt(e.target.value)
-    if (!isNaN(value) && value > 0) {
-      updatePreferences({ servings: value })
-    }
-  }
 
   const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setApiKey(e.target.value)
+  }
+
+  const handleCurrencyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setCurrency(e.target.value)
+  }
+
+  const handleBudgetChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseFloat(e.target.value)
+    if (!isNaN(value) && value >= 0) {
+      updateWeeklyBudget(value)
+    }
   }
 
   return (
     <div className="max-w-3xl mx-auto">
       <div className="bg-white shadow sm:rounded-lg">
         <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg font-medium leading-6 text-gray-900">API Settings</h3>
-          <div className="mt-2 max-w-xl text-sm text-gray-500">
-            <p>Enter your OpenAI API key to enable meal plan generation.</p>
+          <div className="flex items-center space-x-3 mb-6">
+            <Key className="h-6 w-6 text-emerald-600" />
+            <h3 className="text-lg font-medium text-gray-900">API Settings</h3>
           </div>
-          <div className="mt-5">
-            <input
-              type="password"
-              value={apiKey || ''}
-              onChange={handleApiKeyChange}
-              placeholder="sk-..."
-              className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
-            />
-          </div>
-        </div>
-      </div>
 
-      <div className="mt-8 bg-white shadow sm:rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg font-medium leading-6 text-gray-900">Meal Preferences</h3>
-          
-          <div className="mt-6 grid grid-cols-1 gap-y-6">
+          <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Number of Servings
+                OpenAI API Key
               </label>
-              <input
-                type="number"
-                value={preferences.servings}
-                onChange={handleServingsChange}
-                min="1"
-                className="mt-1 block w-24 shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm border-gray-300 rounded-md"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Dietary Restrictions
-              </label>
-              <div className="mt-1 flex rounded-md shadow-sm">
+              <div className="mt-1">
                 <input
-                  type="text"
-                  value={newDietary}
-                  onChange={(e) => setNewDietary(e.target.value)}
-                  className="flex-1 min-w-0 block w-full rounded-none rounded-l-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm border-gray-300"
-                  placeholder="Add dietary restriction..."
+                  type="password"
+                  value={apiKey || ''}
+                  onChange={handleApiKeyChange}
+                  placeholder="sk-..."
+                  className="shadow-sm focus:ring-emerald-500 focus:border-emerald-500 block w-full sm:text-sm border-gray-300 rounded-md"
                 />
-                <button
-                  onClick={handleAddDietary}
-                  className="inline-flex items-center px-3 py-2 border border-l-0 border-gray-300 rounded-r-md bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  <Plus className="h-4 w-4 text-gray-400" />
-                </button>
-              </div>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {preferences.dietary.map((item, index) => (
-                  <span
-                    key={index}
-                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-                  >
-                    {item}
-                    <button
-                      onClick={() => handleRemoveDietary(index)}
-                      className="ml-1.5 inline-flex items-center justify-center"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </span>
-                ))}
+                <p className="mt-2 text-sm text-gray-500">
+                  Your API key is stored locally and never shared.
+                </p>
               </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Allergies
+                Preferred Currency
               </label>
-              <div className="mt-1 flex rounded-md shadow-sm">
-                <input
-                  type="text"
-                  value={newAllergy}
-                  onChange={(e) => setNewAllergy(e.target.value)}
-                  className="flex-1 min-w-0 block w-full rounded-none rounded-l-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm border-gray-300"
-                  placeholder="Add allergy..."
-                />
-                <button
-                  onClick={handleAddAllergy}
-                  className="inline-flex items-center px-3 py-2 border border-l-0 border-gray-300 rounded-r-md bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  <Plus className="h-4 w-4 text-gray-400" />
-                </button>
-              </div>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {preferences.allergies.map((item, index) => (
-                  <span
-                    key={index}
-                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800"
-                  >
-                    {item}
-                    <button
-                      onClick={() => handleRemoveAllergy(index)}
-                      className="ml-1.5 inline-flex items-center justify-center"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </span>
+              <select
+                value={currency}
+                onChange={handleCurrencyChange}
+                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md"
+              >
+                {AVAILABLE_CURRENCIES.map((curr) => (
+                  <option key={curr.code} value={curr.code}>
+                    {curr.code} - {curr.name} ({curr.symbol})
+                  </option>
                 ))}
-              </div>
+              </select>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Preferred Cuisines
+                Weekly Budget ({AVAILABLE_CURRENCIES.find(c => c.code === currency)?.symbol})
               </label>
-              <div className="mt-1 flex rounded-md shadow-sm">
+              <div className="mt-1">
                 <input
-                  type="text"
-                  value={newCuisine}
-                  onChange={(e) => setNewCuisine(e.target.value)}
-                  className="flex-1 min-w-0 block w-full rounded-none rounded-l-md focus:ring-blue-500 focus:border-blue-500 sm:text-sm border-gray-300"
-                  placeholder="Add cuisine type..."
+                  type="number"
+                  value={weeklyBudget}
+                  onChange={handleBudgetChange}
+                  min="0"
+                  step="0.01"
+                  className="shadow-sm focus:ring-emerald-500 focus:border-emerald-500 block w-full sm:text-sm border-gray-300 rounded-md"
                 />
-                <button
-                  onClick={handleAddCuisine}
-                  className="inline-flex items-center px-3 py-2 border border-l-0 border-gray-300 rounded-r-md bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  <Plus className="h-4 w-4 text-gray-400" />
-                </button>
-              </div>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {preferences.cuisineTypes.map((item, index) => (
-                  <span
-                    key={index}
-                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"
-                  >
-                    {item}
-                    <button
-                      onClick={() => handleRemoveCuisine(index)}
-                      className="ml-1.5 inline-flex items-center justify-center"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </span>
-                ))}
+                <p className="mt-2 text-sm text-gray-500">
+                  Set your weekly grocery budget to help track spending.
+                </p>
               </div>
             </div>
           </div>

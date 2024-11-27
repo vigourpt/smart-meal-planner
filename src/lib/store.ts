@@ -1,22 +1,16 @@
 import { create } from 'zustand'
+import type { GeneratedMeal, Ingredient } from './firebase'
 
 interface UserPreferences {
   dietary: string[]
   allergies: string[]
   cuisineTypes: string[]
   servings: number
-}
-
-export interface Recipe {
-  name: string
-  ingredients: string[]
-  recipe: string
-  prepTime: number
-  healthScore: number
+  weeklyBudget: number
 }
 
 interface MealPlanItem {
-  recipe: Recipe | null
+  recipe: GeneratedMeal | null
 }
 
 interface MealPlan {
@@ -24,10 +18,7 @@ interface MealPlan {
 }
 
 interface ShoppingListItem {
-  name: string
-  quantity: number
-  unit: string
-  price: number
+  ingredient: Ingredient
   purchased: boolean
 }
 
@@ -45,12 +36,17 @@ interface State {
   mealPlan: MealPlan | null
   preferences: UserPreferences
   shoppingList: ShoppingListItem[]
+  savedMeals: {
+    [category: string]: GeneratedMeal[]
+  }
   updateMealPlan: (mealPlan: MealPlan) => void
-  updateMealInPlan: (day: string, mealType: string, recipe: Recipe | null) => void
+  updateMealInPlan: (day: string, mealType: string, recipe: GeneratedMeal | null) => void
   updateShoppingList: (items: ShoppingListItem[]) => void
   resetShoppingListSpending: () => void
   generateShoppingListFromMealPlan: (mealPlan: MealPlan) => void
   updatePreferences: (preferences: Partial<UserPreferences>) => void
+  addSavedMeal: (meal: GeneratedMeal) => void
+  updateWeeklyBudget: (amount: number) => void
 }
 
 export const useStore = create<State>((set) => ({
@@ -89,14 +85,21 @@ export const useStore = create<State>((set) => ({
     dietary: [],
     allergies: [],
     cuisineTypes: [],
-    servings: 4
+    servings: 4,
+    weeklyBudget: 150 // Default budget
   },
   shoppingList: [],
+  savedMeals: {
+    breakfast: [],
+    lunch: [],
+    dinner: [],
+    snack: []
+  },
   updateMealPlan: (mealPlan: MealPlan) =>
     set(() => ({
       mealPlan
     })),
-  updateMealInPlan: (day: string, mealType: string, recipe: Recipe | null) =>
+  updateMealInPlan: (day: string, mealType: string, recipe: GeneratedMeal | null) =>
     set((state) => {
       const currentMealPlan = state.mealPlan || { meals: {} }
       
@@ -125,14 +128,27 @@ export const useStore = create<State>((set) => ({
       .filter(meal => meal.recipe)
       .flatMap(meal => meal.recipe!.ingredients)
     
-    const uniqueIngredients = [...new Set(allIngredients)]
-    const shoppingList: ShoppingListItem[] = uniqueIngredients.map(ingredient => ({
-      name: ingredient,
-      quantity: 1,
-      unit: 'unit',
-      price: 0,
+    // Create a map to combine same ingredients
+    const ingredientMap = new Map<string, Ingredient>()
+    
+    allIngredients.forEach(ingredient => {
+      const existing = ingredientMap.get(ingredient.name)
+      if (existing) {
+        // For now, just keep track of the total cost
+        ingredientMap.set(ingredient.name, {
+          ...ingredient,
+          estimatedCost: existing.estimatedCost + ingredient.estimatedCost
+        })
+      } else {
+        ingredientMap.set(ingredient.name, ingredient)
+      }
+    })
+
+    const shoppingList: ShoppingListItem[] = Array.from(ingredientMap.values()).map(ingredient => ({
+      ingredient,
       purchased: false
     }))
+
     set({ shoppingList })
   },
   updatePreferences: (newPreferences: Partial<UserPreferences>) =>
@@ -140,6 +156,20 @@ export const useStore = create<State>((set) => ({
       preferences: {
         ...state.preferences,
         ...newPreferences
+      }
+    })),
+  addSavedMeal: (meal: GeneratedMeal) =>
+    set((state) => ({
+      savedMeals: {
+        ...state.savedMeals,
+        [meal.category]: [...(state.savedMeals[meal.category] || []), meal]
+      }
+    })),
+  updateWeeklyBudget: (amount: number) =>
+    set((state) => ({
+      preferences: {
+        ...state.preferences,
+        weeklyBudget: amount
       }
     }))
 }))

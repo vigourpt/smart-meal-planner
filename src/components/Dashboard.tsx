@@ -17,43 +17,51 @@ export function Dashboard() {
     updateMealPlan,
     shoppingList,
     currency,
-    resetShoppingListSpending
+    resetShoppingListSpending,
+    addSavedMeal
   } = useStore(state => ({
     mealPlan: state.mealPlan,
     updateMealPlan: state.updateMealPlan,
     shoppingList: state.shoppingList,
     currency: state.settings.currency,
-    resetShoppingListSpending: state.resetShoppingListSpending
+    resetShoppingListSpending: state.resetShoppingListSpending,
+    addSavedMeal: state.addSavedMeal
   }));
 
   const totalBudget = 150.00;
-  const currentSpending = shoppingList.reduce((total, item) => total + item.price, 0);
-  const avgPrepTime = 45; // In minutes
-  const healthScore = 8.5;
+  const currentSpending = shoppingList.reduce((total, item) => total + item.ingredient.estimatedCost, 0);
+  const avgPrepTime = mealPlan 
+    ? Object.values(mealPlan.meals)
+        .filter(meal => meal.recipe)
+        .reduce((sum, meal) => sum + meal.recipe!.prepTime, 0) / 
+      Object.values(mealPlan.meals).filter(meal => meal.recipe).length
+    : 0;
+  const healthScore = mealPlan
+    ? Object.values(mealPlan.meals)
+        .filter(meal => meal.recipe)
+        .reduce((sum, meal) => sum + meal.recipe!.healthScore, 0) /
+      Object.values(mealPlan.meals).filter(meal => meal.recipe).length
+    : 0;
   const totalMealsPlanned = mealPlan ? Object.values(mealPlan.meals).filter(meal => meal.recipe).length : 0;
-  const totalPossibleMeals = 21; // 3 meals a day for 7 days
+  const totalPossibleMeals = 28; // 4 meals a day (including snacks) for 7 days
 
   const handleAutoGenerate = async () => {
     try {
       const result = await generateFullMealPlan("");
-      // Convert the old meal plan format to the new format
+      // Save each meal to the database
+      result.meals.forEach(meal => {
+        addSavedMeal(meal);
+      });
+      // Convert to meal plan format
       const newMealPlan = {
         meals: result.meals.reduce((acc, meal, index) => {
-          const day = Math.floor(index / 3);
-          const mealType = index % 3;
+          const day = Math.floor(index / 4); // 4 meals per day including snacks
+          const mealType = index % 4;
           const dayName = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][day];
-          const mealTypeName = ['Breakfast', 'Lunch', 'Dinner'][mealType];
-          acc[`${dayName}-${mealTypeName}`] = {
-            recipe: {
-              name: meal.name,
-              ingredients: meal.ingredients,
-              recipe: meal.recipe,
-              prepTime: 30, // Default value
-              healthScore: 8 // Default value
-            }
-          };
+          const mealTypeName = ['Breakfast', 'Lunch', 'Dinner', 'Snack'][mealType];
+          acc[`${dayName}-${mealTypeName}`] = { recipe: meal };
           return acc;
-        }, {})
+        }, {} as Record<string, { recipe: any }>)
       };
       updateMealPlan(newMealPlan);
     } catch (error) {
@@ -97,7 +105,7 @@ export function Dashboard() {
             <h3 className="text-lg font-medium">Prep Time</h3>
           </div>
           <div className="mt-4">
-            <p className="text-3xl font-bold">{avgPrepTime} min</p>
+            <p className="text-3xl font-bold">{Math.round(avgPrepTime || 0)} min</p>
             <p className="text-sm opacity-90">Avg. per Meal</p>
           </div>
         </div>
@@ -108,7 +116,7 @@ export function Dashboard() {
             <h3 className="text-lg font-medium">Health Score</h3>
           </div>
           <div className="mt-4">
-            <p className="text-3xl font-bold">{healthScore}/10</p>
+            <p className="text-3xl font-bold">{healthScore.toFixed(1)}/10</p>
             <p className="text-sm opacity-90">Based on Nutrition</p>
           </div>
         </div>

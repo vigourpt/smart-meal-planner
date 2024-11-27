@@ -12,6 +12,7 @@
   "dependencies": {
     "@types/react": "18.0.28",
     "@types/react-dom": "18.0.11",
+    "firebase": "^11.0.2",
     "lucide-react": "^0.344.0",
     "openai": "^4.28.0",
     "react": "18.2.0",

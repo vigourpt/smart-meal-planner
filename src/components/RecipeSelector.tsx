@@ -1,43 +1,37 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { X, Search, Plus } from 'lucide-react'
 import { useStore } from '../lib/store'
-
-interface Recipe {
-  name: string
-  ingredients: string[]
-  recipe: string
-  prepTime: number
-  healthScore: number
-}
+import { getMealsByCategory, type GeneratedMeal } from '../lib/firebase'
 
 interface RecipeSelectorProps {
   isOpen: boolean
   onClose: () => void
-  onSelect: (recipe: Recipe) => void
+  onSelect: (recipe: GeneratedMeal) => void
   day: string
   mealType: string
 }
 
-const SAMPLE_RECIPES: Recipe[] = [
-  {
-    name: 'Avocado Toast with Poached Eggs',
-    ingredients: ['bread', 'avocado', 'eggs', 'salt', 'pepper'],
-    recipe: '1. Toast bread\n2. Mash avocado\n3. Poach eggs\n4. Assemble',
-    prepTime: 15,
-    healthScore: 8.5
-  },
-  {
-    name: 'Greek Yogurt Parfait',
-    ingredients: ['greek yogurt', 'granola', 'berries', 'honey'],
-    recipe: '1. Layer yogurt\n2. Add granola\n3. Top with berries\n4. Drizzle honey',
-    prepTime: 5,
-    healthScore: 9.0
-  }
-]
-
 export function RecipeSelector({ isOpen, onClose, onSelect, day, mealType }: RecipeSelectorProps) {
   const [searchTerm, setSearchTerm] = useState('')
-  const [recipes] = useState<Recipe[]>(SAMPLE_RECIPES)
+  const [recipes, setRecipes] = useState<GeneratedMeal[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchRecipes = async () => {
+      try {
+        const data = await getMealsByCategory(mealType.toLowerCase())
+        setRecipes(data)
+      } catch (error) {
+        console.error('Error fetching recipes:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (isOpen) {
+      fetchRecipes()
+    }
+  }, [isOpen, mealType])
 
   const filteredRecipes = recipes.filter(recipe =>
     recipe.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -77,30 +71,43 @@ export function RecipeSelector({ isOpen, onClose, onSelect, day, mealType }: Rec
 
           {/* Recipe List */}
           <div className="mt-4 space-y-2 max-h-96 overflow-y-auto">
-            {filteredRecipes.map((recipe, index) => (
-              <div
-                key={index}
-                className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer"
-                onClick={() => onSelect(recipe)}
-              >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="text-sm font-medium">{recipe.name}</h4>
-                    <p className="mt-1 text-xs text-gray-500">
-                      {recipe.ingredients.join(', ')}
-                    </p>
-                  </div>
-                  <button className="flex items-center text-emerald-600 hover:text-emerald-700">
-                    <Plus className="h-5 w-5" />
-                  </button>
-                </div>
-                <div className="mt-2 flex items-center space-x-4 text-xs text-gray-500">
-                  <span>{recipe.prepTime} min prep</span>
-                  <span>•</span>
-                  <span>Health score: {recipe.healthScore}/10</span>
-                </div>
+            {loading ? (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500 mx-auto"></div>
+                <p className="mt-2 text-sm text-gray-500">Loading recipes...</p>
               </div>
-            ))}
+            ) : filteredRecipes.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-sm text-gray-500">No recipes found.</p>
+              </div>
+            ) : (
+              filteredRecipes.map((recipe) => (
+                <div
+                  key={recipe.id}
+                  className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer"
+                  onClick={() => onSelect(recipe)}
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="text-sm font-medium">{recipe.name}</h4>
+                      <p className="mt-1 text-xs text-gray-500">
+                        {recipe.ingredients.join(', ')}
+                      </p>
+                    </div>
+                    <button className="flex items-center text-emerald-600 hover:text-emerald-700">
+                      <Plus className="h-5 w-5" />
+                    </button>
+                  </div>
+                  <div className="mt-2 flex items-center space-x-4 text-xs text-gray-500">
+                    <span>{recipe.prepTime} min prep</span>
+                    <span>•</span>
+                    <span>{recipe.macros.calories} kcal</span>
+                    <span>•</span>
+                    <span>Health score: {recipe.healthScore}/10</span>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>

@@ -3,17 +3,19 @@ import {
   CalendarDays,
   ShoppingCart,
   User,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  BookOpen
 } from 'lucide-react'
 
 interface NavigationProps {
   activeTab: string
-  onTabChange: (tab: 'planner' | 'shopping' | 'profile' | 'settings') => void
+  onTabChange: (tab: 'planner' | 'shopping' | 'profile' | 'settings' | 'saved') => void
 }
 
 export function Navigation({ activeTab, onTabChange }: NavigationProps) {
   const navItems = [
     { id: 'planner', label: 'Meal Plan', icon: CalendarDays },
+    { id: 'saved', label: 'Saved Meals', icon: BookOpen },
     { id: 'shopping', label: 'Shopping List', icon: ShoppingCart },
     { id: 'profile', label: 'Profile', icon: User },
     { id: 'settings', label: 'Settings', icon: SettingsIcon }

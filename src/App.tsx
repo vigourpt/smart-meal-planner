@@ -6,9 +6,10 @@ import MealPlanner from './components/MealPlanner'
 import { ShoppingList } from './components/ShoppingList'
 import { Profile } from './components/Profile'
 import { Settings } from './components/Settings'
+import { SavedMeals } from './components/SavedMeals'
 import { useStore } from './lib/store'
 
-type TabType = 'planner' | 'shopping' | 'profile' | 'settings'
+type TabType = 'planner' | 'shopping' | 'profile' | 'settings' | 'saved'
 
 function App() {
   const [activeTab, setActiveTab] = useState<TabType>('planner')
@@ -40,6 +41,7 @@ function App() {
         {activeTab === 'shopping' && <ShoppingList />}
         {activeTab === 'profile' && <Profile />}
         {activeTab === 'settings' && <Settings />}
+        {activeTab === 'saved' && <SavedMeals />}
       </main>
     </div>
   )
