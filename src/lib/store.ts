@@ -7,12 +7,14 @@ interface UserPreferences {
   servings: number
 }
 
+interface Meal {
+  name: string
+  ingredients: string[]
+  recipe: string
+}
+
 interface MealPlan {
-  meals: {
-    name: string
-    ingredients: string[]
-    recipe: string
-  }[]
+  meals: Meal[]
 }
 
 interface ShoppingListItem {
@@ -40,12 +42,13 @@ interface State {
   updateShoppingList: (items: ShoppingListItem[]) => void
   resetShoppingListSpending: () => void
   generateShoppingListFromMealPlan: (mealPlan: MealPlan) => void
+  updatePreferences: (preferences: Partial<UserPreferences>) => void
 }
 
 export const useStore = create<State>((set) => ({
   settings: {
     darkMode: false,
-    apiKey: null,
+    apiKey: localStorage.getItem('openai_api_key'),
     currency: 'USD',
     toggleDarkMode: () =>
       set((state) => ({
@@ -54,13 +57,15 @@ export const useStore = create<State>((set) => ({
           darkMode: !state.settings.darkMode
         }
       })),
-    setApiKey: (key: string) =>
+    setApiKey: (key: string) => {
+      localStorage.setItem('openai_api_key', key)
       set((state) => ({
         settings: {
           ...state.settings,
           apiKey: key
         }
       }))
+    }
   },
   mealPlan: null,
   preferences: {
@@ -87,7 +92,8 @@ export const useStore = create<State>((set) => ({
     })),
   generateShoppingListFromMealPlan: (mealPlan: MealPlan) => {
     const ingredients = mealPlan.meals.flatMap(meal => meal.ingredients)
-    const shoppingList: ShoppingListItem[] = ingredients.map(ingredient => ({
+    const uniqueIngredients = [...new Set(ingredients)]
+    const shoppingList: ShoppingListItem[] = uniqueIngredients.map(ingredient => ({
       name: ingredient,
       quantity: 1,
       unit: 'unit',
@@ -95,5 +101,12 @@ export const useStore = create<State>((set) => ({
       purchased: false
     }))
     set({ shoppingList })
-  }
+  },
+  updatePreferences: (newPreferences: Partial<UserPreferences>) =>
+    set((state) => ({
+      preferences: {
+        ...state.preferences,
+        ...newPreferences
+      }
+    }))
 }))

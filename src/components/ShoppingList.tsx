@@ -32,6 +32,18 @@ export function ShoppingList() {
     updateShoppingList(updatedList)
   }
 
+  const handleUpdateQuantity = (index: number, quantity: number) => {
+    const updatedList = [...shoppingList]
+    updatedList[index].quantity = quantity
+    updateShoppingList(updatedList)
+  }
+
+  const handleUpdateUnit = (index: number, unit: string) => {
+    const updatedList = [...shoppingList]
+    updatedList[index].unit = unit
+    updateShoppingList(updatedList)
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -66,11 +78,25 @@ export function ShoppingList() {
                   onChange={() => handleTogglePurchased(index)}
                   className="h-5 w-5 text-blue-500"
                 />
-                <div>
+                <div className="space-y-2">
                   <h3 className="font-medium">{item.name}</h3>
-                  <p className="text-sm text-gray-500">
-                    {item.quantity} {item.unit}
-                  </p>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="number"
+                      value={item.quantity}
+                      onChange={(e) => handleUpdateQuantity(index, parseFloat(e.target.value) || 0)}
+                      className="w-20 px-2 py-1 border rounded"
+                      min="0"
+                      step="0.1"
+                    />
+                    <input
+                      type="text"
+                      value={item.unit}
+                      onChange={(e) => handleUpdateUnit(index, e.target.value)}
+                      className="w-20 px-2 py-1 border rounded"
+                      placeholder="unit"
+                    />
+                  </div>
                 </div>
               </div>
               <div className="flex items-center space-x-2">

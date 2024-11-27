@@ -38,21 +38,9 @@ export default function MealPlanner() {
         Servings: ${preferences.servings}
       `
 
-      const result = await generateFullMealPlan(preferencesString)
-      if (result) {
-        // Parse the result into a MealPlan object
-        const newMealPlan = {
-          meals: [
-            {
-              name: "Sample Meal",
-              ingredients: ["ingredient 1", "ingredient 2"],
-              recipe: "Sample recipe instructions"
-            }
-          ]
-        }
-        updateMealPlan(newMealPlan)
-        generateShoppingListFromMealPlan(newMealPlan)
-      }
+      const newMealPlan = await generateFullMealPlan(preferencesString)
+      updateMealPlan(newMealPlan)
+      generateShoppingListFromMealPlan(newMealPlan)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate meal plan')
     } finally {

@@ -21,21 +21,9 @@ export function Dashboard() {
         Servings: ${preferences.servings}
       `;
       
-      const result = await generateFullMealPlan(preferencesString);
-      if (result) {
-        // Parse the result into a MealPlan object
-        const newMealPlan = {
-          meals: [
-            {
-              name: "Sample Meal",
-              ingredients: ["ingredient 1", "ingredient 2"],
-              recipe: "Sample recipe instructions"
-            }
-          ]
-        };
-        updateMealPlan(newMealPlan);
-        sendNotification('Meal Plan Generated', 'Your new meal plan is ready!');
-      }
+      const newMealPlan = await generateFullMealPlan(preferencesString);
+      updateMealPlan(newMealPlan);
+      sendNotification('Meal Plan Generated', 'Your new meal plan is ready!');
     } catch (error) {
       console.error('Error generating meal plan:', error);
       sendNotification('Error', 'Failed to generate meal plan');

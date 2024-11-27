@@ -1,158 +1,218 @@
-import React from 'react';
-import { Bell, Globe, Moon, Key, DollarSign } from 'lucide-react';
-import { useStore } from '../lib/store';
-import { ApiKeyModal } from './ApiKeyModal';
-import { CURRENCIES } from '../lib/constants';
+import React, { useState } from 'react'
+import { useStore } from '../lib/store'
 
 export function Settings() {
-  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = React.useState(false);
-  const { settings, updateSettings } = useStore();
-  const apiKey = useStore(state => state.apiKey);
+  const { preferences, updatePreferences, currency, apiKey, setApiKey } = useStore(state => ({
+    preferences: state.preferences,
+    updatePreferences: state.updatePreferences,
+    currency: state.settings.currency,
+    apiKey: state.settings.apiKey,
+    setApiKey: state.settings.setApiKey
+  }))
 
-  const handleCurrencyChange = (currencyCode: string) => {
-    const currency = CURRENCIES.find(c => c.code === currencyCode);
-    if (currency) {
-      updateSettings({
-        currency: {
-          code: currency.code,
-          symbol: currency.symbol,
-        },
-      });
+  const [newDietary, setNewDietary] = useState('')
+  const [newAllergy, setNewAllergy] = useState('')
+  const [newCuisine, setNewCuisine] = useState('')
+
+  const handleAddDietary = () => {
+    if (newDietary.trim()) {
+      updatePreferences({
+        dietary: [...preferences.dietary, newDietary.trim()]
+      })
+      setNewDietary('')
     }
-  };
+  }
+
+  const handleRemoveDietary = (index: number) => {
+    updatePreferences({
+      dietary: preferences.dietary.filter((_, i) => i !== index)
+    })
+  }
+
+  const handleAddAllergy = () => {
+    if (newAllergy.trim()) {
+      updatePreferences({
+        allergies: [...preferences.allergies, newAllergy.trim()]
+      })
+      setNewAllergy('')
+    }
+  }
+
+  const handleRemoveAllergy = (index: number) => {
+    updatePreferences({
+      allergies: preferences.allergies.filter((_, i) => i !== index)
+    })
+  }
+
+  const handleAddCuisine = () => {
+    if (newCuisine.trim()) {
+      updatePreferences({
+        cuisineTypes: [...preferences.cuisineTypes, newCuisine.trim()]
+      })
+      setNewCuisine('')
+    }
+  }
+
+  const handleRemoveCuisine = (index: number) => {
+    updatePreferences({
+      cuisineTypes: preferences.cuisineTypes.filter((_, i) => i !== index)
+    })
+  }
+
+  const handleServingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value)
+    if (!isNaN(value) && value > 0) {
+      updatePreferences({ servings: value })
+    }
+  }
+
+  const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setApiKey(e.target.value)
+  }
 
   return (
-    <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-6">
-      <div className="flex items-center space-x-4 mb-8">
-        <h2 className="text-2xl font-bold text-gray-900">Settings</h2>
-      </div>
-
-      <div className="space-y-6">
-        <section>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <Key className="h-5 w-5 mr-2 text-emerald-600" />
-            API Configuration
-          </h3>
-          <div className="space-y-2">
-            <button
-              onClick={() => setIsApiKeyModalOpen(true)}
-              className="px-4 py-2 border border-emerald-600 text-emerald-600 rounded-lg hover:bg-emerald-50"
-            >
-              {apiKey ? 'Update OpenAI API Key' : 'Configure OpenAI API Key'}
-            </button>
-            {apiKey && (
-              <div className="text-sm text-gray-600">
-                API key is configured
-              </div>
-            )}
+    <div className="space-y-8">
+      <div>
+        <h2 className="text-2xl font-bold mb-4">Settings</h2>
+        <div className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              OpenAI API Key
+            </label>
+            <input
+              type="password"
+              value={apiKey || ''}
+              onChange={handleApiKeyChange}
+              placeholder="sk-..."
+              className="w-full p-2 border rounded"
+            />
           </div>
-        </section>
 
-        <section>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <DollarSign className="h-5 w-5 mr-2 text-emerald-600" />
-            Currency
-          </h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Select your preferred currency
-              </label>
-              <select
-                value={settings.currency.code}
-                onChange={(e) => handleCurrencyChange(e.target.value)}
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Number of Servings
+            </label>
+            <input
+              type="number"
+              value={preferences.servings}
+              onChange={handleServingsChange}
+              min="1"
+              className="w-24 p-2 border rounded"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Dietary Restrictions
+            </label>
+            <div className="flex gap-2 mb-2">
+              <input
+                type="text"
+                value={newDietary}
+                onChange={(e) => setNewDietary(e.target.value)}
+                className="flex-1 p-2 border rounded"
+                placeholder="Add dietary restriction..."
+              />
+              <button
+                onClick={handleAddDietary}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
               >
-                {CURRENCIES.map((currency) => (
-                  <option key={currency.code} value={currency.code}>
-                    {currency.symbol} - {currency.name} ({currency.code})
-                  </option>
-                ))}
-              </select>
+                Add
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {preferences.dietary.map((item, index) => (
+                <span
+                  key={index}
+                  className="px-3 py-1 bg-gray-100 rounded-full flex items-center gap-2"
+                >
+                  {item}
+                  <button
+                    onClick={() => handleRemoveDietary(index)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
             </div>
           </div>
-        </section>
 
-        <section>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <Bell className="h-5 w-5 mr-2 text-emerald-600" />
-            Notifications
-          </h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-gray-700">Email notifications</span>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="sr-only peer"
-                  checked={settings.emailNotifications}
-                  onChange={(e) => updateSettings({ emailNotifications: e.target.checked })}
-                />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-              </label>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-700">Push notifications</span>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="sr-only peer"
-                  checked={settings.pushNotifications}
-                  onChange={(e) => updateSettings({ pushNotifications: e.target.checked })}
-                />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-              </label>
-            </div>
-          </div>
-        </section>
-
-        <section>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <Globe className="h-5 w-5 mr-2 text-emerald-600" />
-            Language & Region
-          </h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Language</label>
-              <select
-                value={settings.language}
-                onChange={(e) => updateSettings({ language: e.target.value })}
-                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Allergies
+            </label>
+            <div className="flex gap-2 mb-2">
+              <input
+                type="text"
+                value={newAllergy}
+                onChange={(e) => setNewAllergy(e.target.value)}
+                className="flex-1 p-2 border rounded"
+                placeholder="Add allergy..."
+              />
+              <button
+                onClick={handleAddAllergy}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
               >
-                <option value="en-US">English (US)</option>
-                <option value="es">Spanish</option>
-                <option value="fr">French</option>
-              </select>
+                Add
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {preferences.allergies.map((item, index) => (
+                <span
+                  key={index}
+                  className="px-3 py-1 bg-gray-100 rounded-full flex items-center gap-2"
+                >
+                  {item}
+                  <button
+                    onClick={() => handleRemoveAllergy(index)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
             </div>
           </div>
-        </section>
 
-        <section>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <Moon className="h-5 w-5 mr-2 text-emerald-600" />
-            Appearance
-          </h3>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-gray-700">Dark Mode</span>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="sr-only peer"
-                  checked={settings.theme === 'dark'}
-                  onChange={(e) => updateSettings({ theme: e.target.checked ? 'dark' : 'light' })}
-                />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-              </label>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Preferred Cuisines
+            </label>
+            <div className="flex gap-2 mb-2">
+              <input
+                type="text"
+                value={newCuisine}
+                onChange={(e) => setNewCuisine(e.target.value)}
+                className="flex-1 p-2 border rounded"
+                placeholder="Add cuisine type..."
+              />
+              <button
+                onClick={handleAddCuisine}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              >
+                Add
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {preferences.cuisineTypes.map((item, index) => (
+                <span
+                  key={index}
+                  className="px-3 py-1 bg-gray-100 rounded-full flex items-center gap-2"
+                >
+                  {item}
+                  <button
+                    onClick={() => handleRemoveCuisine(index)}
+                    className="text-gray-500 hover:text-gray-700"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
             </div>
           </div>
-        </section>
+        </div>
       </div>
-
-      <ApiKeyModal
-        isOpen={isApiKeyModalOpen}
-        onClose={() => setIsApiKeyModalOpen(false)}
-      />
     </div>
-  );
+  )
 }
