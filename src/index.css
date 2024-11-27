@@ -2,39 +2,73 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom gradients */
-.gradient-primary {
-  @apply bg-gradient-to-r from-emerald-500 to-teal-600;
+@layer base {
+  body {
+    @apply antialiased;
+  }
 }
 
-.gradient-secondary {
-  @apply bg-gradient-to-r from-blue-500 to-indigo-600;
+@layer components {
+  .btn {
+    @apply inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500;
+  }
+
+  .input {
+    @apply block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-gray-700;
+  }
+
+  .card {
+    @apply bg-white shadow rounded-lg overflow-hidden;
+  }
+
+  .card-header {
+    @apply px-4 py-5 border-b border-gray-200 sm:px-6;
+  }
+
+  .card-body {
+    @apply px-4 py-5 sm:p-6;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-blue {
+    @apply bg-blue-100 text-blue-800;
+  }
+
+  .badge-red {
+    @apply bg-red-100 text-red-800;
+  }
+
+  .badge-green {
+    @apply bg-green-100 text-green-800;
+  }
 }
 
-.gradient-accent {
-  @apply bg-gradient-to-r from-purple-500 to-pink-600;
+/* Dark mode styles */
+.dark {
+  @apply bg-gray-900 text-white;
 }
 
-/* Animations */
-.hover-scale {
-  @apply transform transition-transform hover:scale-105;
+.dark .card {
+  @apply bg-gray-800;
 }
 
-.hover-glow {
-  @apply transition-all hover:shadow-lg hover:shadow-emerald-100;
+.dark .input {
+  @apply bg-gray-700 border-gray-600 text-white;
 }
 
-/* Dark mode enhancements */
-.dark .gradient-primary {
-  @apply from-emerald-600 to-teal-700;
-}
-
-.dark .gradient-secondary {
-  @apply from-blue-600 to-indigo-700;
-}
-
-.dark .gradient-accent {
-  @apply from-purple-600 to-pink-700;
+.dark .label {
+  @apply text-gray-200;
 }
 
 /* Custom scrollbar */
@@ -44,9 +78,25 @@
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-gray-100 dark:bg-gray-800;
+  @apply bg-gray-100;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-emerald-500 rounded-full hover:bg-emerald-600;
+  @apply bg-gray-400 rounded;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-500;
+}
+
+.dark ::-webkit-scrollbar-track {
+  @apply bg-gray-800;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  @apply bg-gray-600;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-500;
 }

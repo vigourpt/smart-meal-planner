@@ -1,6 +1,7 @@
 import React from 'react'
 import { useStore } from '../lib/store'
 import { formatCurrency } from '../lib/currency'
+import { RefreshCw, DollarSign, Check } from 'lucide-react'
 
 export function ShoppingList() {
   const {
@@ -46,73 +47,90 @@ export function ShoppingList() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-start">
         <div>
-          <h2 className="text-2xl font-bold">Shopping List</h2>
-          <p className="text-gray-600">
-            Remaining: {formatCurrency(remainingTotal, currency)} / 
-            Estimated Total: {formatCurrency(estimatedTotal, currency)}
-          </p>
+          <h2 className="text-2xl font-bold text-gray-900">Shopping List</h2>
+          <div className="mt-1 flex items-center gap-4">
+            <div className="flex items-center gap-1 text-sm text-gray-600">
+              <DollarSign className="h-4 w-4" />
+              <span>Remaining: {formatCurrency(remainingTotal, currency)}</span>
+            </div>
+            <div className="flex items-center gap-1 text-sm text-gray-600">
+              <DollarSign className="h-4 w-4" />
+              <span>Total: {formatCurrency(estimatedTotal, currency)}</span>
+            </div>
+          </div>
         </div>
         <button
           onClick={resetShoppingListSpending}
-          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
         >
-          Reset Spending
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Reset List
         </button>
       </div>
 
-      <div className="space-y-4">
-        {shoppingList.map((item, index) => (
-          <div
-            key={index}
-            className={`p-4 rounded-lg border ${
-              item.purchased ? 'bg-gray-100' : 'bg-white'
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <input
-                  type="checkbox"
-                  checked={item.purchased}
-                  onChange={() => handleTogglePurchased(index)}
-                  className="h-5 w-5 text-blue-500"
-                />
-                <div className="space-y-2">
-                  <h3 className="font-medium">{item.name}</h3>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="number"
-                      value={item.quantity}
-                      onChange={(e) => handleUpdateQuantity(index, parseFloat(e.target.value) || 0)}
-                      className="w-20 px-2 py-1 border rounded"
-                      min="0"
-                      step="0.1"
-                    />
-                    <input
-                      type="text"
-                      value={item.unit}
-                      onChange={(e) => handleUpdateUnit(index, e.target.value)}
-                      className="w-20 px-2 py-1 border rounded"
-                      placeholder="unit"
-                    />
+      <div className="bg-white shadow overflow-hidden sm:rounded-md">
+        <ul className="divide-y divide-gray-200">
+          {shoppingList.map((item, index) => (
+            <li
+              key={index}
+              className={`px-6 py-4 ${
+                item.purchased ? 'bg-gray-50' : 'hover:bg-gray-50'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <button
+                    onClick={() => handleTogglePurchased(index)}
+                    className={`p-1 rounded-full ${
+                      item.purchased
+                        ? 'bg-green-100 text-green-600'
+                        : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                    }`}
+                  >
+                    <Check className="h-4 w-4" />
+                  </button>
+                  <div>
+                    <h3 className={`text-sm font-medium ${
+                      item.purchased ? 'text-gray-500 line-through' : 'text-gray-900'
+                    }`}>
+                      {item.name}
+                    </h3>
+                    <div className="mt-1 flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={item.quantity}
+                        onChange={(e) => handleUpdateQuantity(index, parseFloat(e.target.value) || 0)}
+                        className="w-20 px-2 py-1 text-sm border rounded focus:ring-blue-500 focus:border-blue-500"
+                        min="0"
+                        step="0.1"
+                      />
+                      <input
+                        type="text"
+                        value={item.unit}
+                        onChange={(e) => handleUpdateUnit(index, e.target.value)}
+                        className="w-20 px-2 py-1 text-sm border rounded focus:ring-blue-500 focus:border-blue-500"
+                        placeholder="unit"
+                      />
+                    </div>
                   </div>
                 </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500">{currency}</span>
+                  <input
+                    type="number"
+                    value={item.price}
+                    onChange={(e) => handleUpdatePrice(index, parseFloat(e.target.value) || 0)}
+                    className="w-24 px-2 py-1 text-sm border rounded focus:ring-blue-500 focus:border-blue-500"
+                    step="0.01"
+                    min="0"
+                  />
+                </div>
               </div>
-              <div className="flex items-center space-x-2">
-                <span>{currency}</span>
-                <input
-                  type="number"
-                  value={item.price}
-                  onChange={(e) => handleUpdatePrice(index, parseFloat(e.target.value) || 0)}
-                  className="w-24 px-2 py-1 border rounded"
-                  step="0.01"
-                  min="0"
-                />
-              </div>
-            </div>
-          </div>
-        ))}
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   )
