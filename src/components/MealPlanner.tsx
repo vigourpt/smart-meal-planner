@@ -31,16 +31,14 @@ export default function MealPlanner() {
     updateMealInPlan,
     preferences,
     generateShoppingListFromMealPlan,
-    apiKey,
-    addSavedMeal
+    apiKey
   } = useStore(state => ({
     mealPlan: state.mealPlan,
     updateMealPlan: state.updateMealPlan,
     updateMealInPlan: state.updateMealInPlan,
     preferences: state.preferences,
     generateShoppingListFromMealPlan: state.generateShoppingListFromMealPlan,
-    apiKey: state.settings.apiKey,
-    addSavedMeal: state.addSavedMeal
+    apiKey: state.settings.apiKey
   }))
 
   const handleGenerateMealPlan = async () => {
@@ -58,38 +56,16 @@ export default function MealPlanner() {
         Allergies: ${preferences.allergies.join(', ')}
         Cuisine types: ${preferences.cuisineTypes.join(', ')}
         Servings: ${preferences.servings}
-        Please include detailed macros (calories, protein, carbs, fat) for each meal.
       `
 
       const result = await generateFullMealPlan(preferencesString)
-      // Convert the old meal plan format to the new format
       const newMealPlan = {
         meals: result.meals.reduce((acc, meal, index) => {
-          const day = Math.floor(index / 4) // 4 meals per day including snacks
+          const day = Math.floor(index / 4)
           const mealType = index % 4
           const dayName = DAYS[day]
           const mealTypeName = MEAL_TYPES[mealType]
-          
-          const generatedMeal: GeneratedMeal = {
-            name: meal.name,
-            category: mealTypeName.toLowerCase() as 'breakfast' | 'lunch' | 'dinner' | 'snack',
-            ingredients: meal.ingredients,
-            recipe: meal.recipe,
-            prepTime: 30, // Default value
-            healthScore: 8, // Default value
-            macros: {
-              calories: 500, // Default values - these should come from the API
-              protein: 30,
-              carbs: 50,
-              fat: 20
-            },
-            createdAt: new Date()
-          }
-
-          // Save the meal to Firebase
-          addSavedMeal(generatedMeal)
-
-          acc[`${dayName}-${mealTypeName}`] = { recipe: generatedMeal }
+          acc[`${dayName}-${mealTypeName}`] = { recipe: meal }
           return acc
         }, {} as Record<string, { recipe: GeneratedMeal }>)
       }
@@ -133,7 +109,19 @@ export default function MealPlanner() {
   }
 
   const handleSelectRecipe = (recipe: GeneratedMeal) => {
-    updateMealInPlan(recipeSelector.day, recipeSelector.mealType, recipe)
+    // Update meal plan
+    const currentMealPlan = mealPlan || { meals: {} }
+    const newMealPlan = {
+      meals: {
+        ...currentMealPlan.meals,
+        [`${recipeSelector.day}-${recipeSelector.mealType}`]: { recipe }
+      }
+    }
+    updateMealPlan(newMealPlan)
+    
+    // Update shopping list
+    generateShoppingListFromMealPlan(newMealPlan)
+    
     handleCloseRecipeSelector()
   }
 

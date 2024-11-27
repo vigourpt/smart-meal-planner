@@ -66,7 +66,7 @@ export async function generateFullMealPlan(preferences: string): Promise<{ meals
           content: `Generate a meal plan based on these preferences: ${preferences}`
         }
       ],
-      model: "gpt-4o-mini-2024-07-18",
+      model: "GPT-4o mini",
       temperature: 0.7,
       max_tokens: 4000,
       response_format: { type: "json_object" }
@@ -148,7 +148,7 @@ export async function generateMealsByCategory(category: string, count: number = 
           content: `Generate ${count} ${category} recipes with detailed nutritional information and cost estimates.`
         }
       ],
-      model: "gpt-4o-mini-2024-07-18",
+      model: "GPT-4o mini",
       temperature: 0.7,
       max_tokens: 2000,
       response_format: { type: "json_object" }

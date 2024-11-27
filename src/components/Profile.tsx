@@ -2,33 +2,17 @@ import React, { useState } from 'react'
 import { useStore } from '../lib/store'
 import { 
   User as UserIcon, 
-  DollarSign, 
-  Clock, 
-  Heart,
   Plus,
   X
 } from 'lucide-react'
-
-const AVAILABLE_CURRENCIES = [
-  { code: 'USD', symbol: '$', name: 'US Dollar' },
-  { code: 'EUR', symbol: '€', name: 'Euro' },
-  { code: 'GBP', symbol: '£', name: 'British Pound' },
-  { code: 'AUD', symbol: 'A$', name: 'Australian Dollar' },
-  { code: 'CAD', symbol: 'C$', name: 'Canadian Dollar' },
-  { code: 'JPY', symbol: '¥', name: 'Japanese Yen' }
-]
 
 export function Profile() {
   const { 
     preferences, 
     updatePreferences,
-    currency,
-    setCurrency
   } = useStore(state => ({
     preferences: state.preferences,
     updatePreferences: state.updatePreferences,
-    currency: state.settings.currency,
-    setCurrency: (currency: string) => state.settings.setCurrency(currency)
   }))
 
   const [newDietary, setNewDietary] = useState('')
@@ -87,24 +71,6 @@ export function Profile() {
           <div className="flex items-center space-x-3 mb-6">
             <UserIcon className="h-6 w-6 text-emerald-600" />
             <h3 className="text-lg font-medium text-gray-900">Profile Settings</h3>
-          </div>
-
-          {/* Currency Selection */}
-          <div className="mb-8">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Preferred Currency
-            </label>
-            <select
-              value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm rounded-md"
-            >
-              {AVAILABLE_CURRENCIES.map((curr) => (
-                <option key={curr.code} value={curr.code}>
-                  {curr.code} - {curr.name} ({curr.symbol})
-                </option>
-              ))}
-            </select>
           </div>
 
           {/* Dietary Restrictions */}

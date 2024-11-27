@@ -10,8 +10,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@types/canvas-confetti": "^1.6.4",
     "@types/react": "18.0.28",
     "@types/react-dom": "18.0.11",
+    "canvas-confetti": "^1.9.3",
     "firebase": "^11.0.2",
     "lucide-react": "^0.344.0",
     "openai": "^4.28.0",

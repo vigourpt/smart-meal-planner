@@ -1,57 +1,66 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Utensils, 
   DollarSign, 
   Clock, 
   TrendingUp,
   RotateCcw,
-  Wand2
+  Wand2,
+  Loader2
 } from 'lucide-react';
 import { useStore } from '../lib/store';
 import { formatCurrency } from '../lib/currency';
 import { generateFullMealPlan } from '../lib/openai';
+import confetti from 'canvas-confetti';
 
 export function Dashboard() {
+  const [isGenerating, setIsGenerating] = useState(false);
   const { 
     mealPlan, 
     updateMealPlan,
     shoppingList,
     currency,
     resetShoppingListSpending,
-    addSavedMeal
+    addSavedMeal,
+    generateShoppingListFromMealPlan,
+    weeklyBudget
   } = useStore(state => ({
     mealPlan: state.mealPlan,
     updateMealPlan: state.updateMealPlan,
     shoppingList: state.shoppingList,
     currency: state.settings.currency,
     resetShoppingListSpending: state.resetShoppingListSpending,
-    addSavedMeal: state.addSavedMeal
+    addSavedMeal: state.addSavedMeal,
+    generateShoppingListFromMealPlan: state.generateShoppingListFromMealPlan,
+    weeklyBudget: state.preferences.weeklyBudget
   }));
 
-  const totalBudget = 150.00;
   const currentSpending = shoppingList.reduce((total, item) => total + item.ingredient.estimatedCost, 0);
   const avgPrepTime = mealPlan 
     ? Object.values(mealPlan.meals)
         .filter(meal => meal.recipe)
         .reduce((sum, meal) => sum + meal.recipe!.prepTime, 0) / 
-      Object.values(mealPlan.meals).filter(meal => meal.recipe).length
+      Object.values(mealPlan.meals).filter(meal => meal.recipe).length || 0
     : 0;
   const healthScore = mealPlan
     ? Object.values(mealPlan.meals)
         .filter(meal => meal.recipe)
         .reduce((sum, meal) => sum + meal.recipe!.healthScore, 0) /
-      Object.values(mealPlan.meals).filter(meal => meal.recipe).length
+      Object.values(mealPlan.meals).filter(meal => meal.recipe).length || 0
     : 0;
   const totalMealsPlanned = mealPlan ? Object.values(mealPlan.meals).filter(meal => meal.recipe).length : 0;
   const totalPossibleMeals = 28; // 4 meals a day (including snacks) for 7 days
 
   const handleAutoGenerate = async () => {
     try {
+      setIsGenerating(true);
       const result = await generateFullMealPlan("");
+      
       // Save each meal to the database
       result.meals.forEach(meal => {
         addSavedMeal(meal);
       });
+
       // Convert to meal plan format
       const newMealPlan = {
         meals: result.meals.reduce((acc, meal, index) => {
@@ -63,9 +72,20 @@ export function Dashboard() {
           return acc;
         }, {} as Record<string, { recipe: any }>)
       };
+
       updateMealPlan(newMealPlan);
+      generateShoppingListFromMealPlan(newMealPlan);
+
+      // Trigger confetti
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 }
+      });
     } catch (error) {
       console.error('Error generating meal plan:', error);
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -93,7 +113,7 @@ export function Dashboard() {
           </div>
           <div className="mt-4">
             <p className="text-3xl font-bold">
-              {formatCurrency(currentSpending, currency)}/{formatCurrency(totalBudget, currency)}
+              {formatCurrency(currentSpending, currency)}/{formatCurrency(weeklyBudget, currency)}
             </p>
             <p className="text-sm opacity-90">Weekly Spending</p>
           </div>
@@ -133,10 +153,17 @@ export function Dashboard() {
         </button>
         <button
           onClick={handleAutoGenerate}
-          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700"
+          disabled={isGenerating}
+          className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
+            isGenerating ? 'bg-emerald-400' : 'bg-emerald-600 hover:bg-emerald-700'
+          }`}
         >
-          <Wand2 className="h-4 w-4 mr-2" />
-          Auto Generate Plan
+          {isGenerating ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : (
+            <Wand2 className="h-4 w-4 mr-2" />
+          )}
+          {isGenerating ? 'Generating...' : 'Auto Generate Plan'}
         </button>
       </div>
 
