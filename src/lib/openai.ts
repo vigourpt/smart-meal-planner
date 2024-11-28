@@ -17,6 +17,11 @@ export async function generateFullMealPlan(preferences: string): Promise<{ meals
   try {
     const openai = getClient()
     const currency = useStore.getState().settings.currency
+
+    // First, check available models
+    const models = await openai.models.list()
+    console.log('Available models:', models.data.map(m => m.id))
+
     const completion = await openai.chat.completions.create({
       messages: [
         {
@@ -32,33 +37,37 @@ export async function generateFullMealPlan(preferences: string): Promise<{ meals
           
           Format each meal as a JSON object with the following structure:
           {
-            "name": "Meal Name",
-            "category": "breakfast|lunch|dinner|snack",
-            "ingredients": [
+            "meals": [
               {
-                "name": "ingredient1",
-                "amount": "1 cup",
-                "estimatedCost": 2.50
-              },
-              {
-                "name": "ingredient2",
-                "amount": "200g",
-                "estimatedCost": 3.75
+                "name": "Meal Name",
+                "category": "breakfast|lunch|dinner|snack",
+                "ingredients": [
+                  {
+                    "name": "ingredient1",
+                    "amount": "1 cup",
+                    "estimatedCost": 2.50
+                  },
+                  {
+                    "name": "ingredient2",
+                    "amount": "200g",
+                    "estimatedCost": 3.75
+                  }
+                ],
+                "recipe": "Step by step instructions",
+                "prepTime": 30,
+                "healthScore": 8,
+                "totalCost": 6.25,
+                "macros": {
+                  "calories": 500,
+                  "protein": 30,
+                  "carbs": 50,
+                  "fat": 20
+                }
               }
-            ],
-            "recipe": "Step by step instructions",
-            "prepTime": 30,
-            "healthScore": 8,
-            "totalCost": 6.25,
-            "macros": {
-              "calories": 500,
-              "protein": 30,
-              "carbs": 50,
-              "fat": 20
-            }
+            ]
           }
           
-          Return an array of 40 meal objects, ensuring variety and adherence to the provided preferences.
+          Return exactly 40 meal objects in the meals array, ensuring variety and adherence to the provided preferences.
           Provide realistic cost estimates for ingredients based on typical supermarket prices in ${currency}.`
         },
         {
@@ -66,7 +75,7 @@ export async function generateFullMealPlan(preferences: string): Promise<{ meals
           content: `Generate a meal plan based on these preferences: ${preferences}`
         }
       ],
-      model: "GPT-4o mini",
+      model: "gpt-4",  // We'll update this based on available models
       temperature: 0.7,
       max_tokens: 4000,
       response_format: { type: "json_object" }
@@ -79,6 +88,9 @@ export async function generateFullMealPlan(preferences: string): Promise<{ meals
 
     try {
       const parsedContent = JSON.parse(content)
+      if (!parsedContent.meals || !Array.isArray(parsedContent.meals)) {
+        throw new Error('Invalid response format')
+      }
       return {
         meals: parsedContent.meals.map((meal: any) => ({
           ...meal,
@@ -114,33 +126,37 @@ export async function generateMealsByCategory(category: string, count: number = 
           
           Format each meal as a JSON object with the following structure:
           {
-            "name": "Meal Name",
-            "category": "${category}",
-            "ingredients": [
+            "meals": [
               {
-                "name": "ingredient1",
-                "amount": "1 cup",
-                "estimatedCost": 2.50
-              },
-              {
-                "name": "ingredient2",
-                "amount": "200g",
-                "estimatedCost": 3.75
+                "name": "Meal Name",
+                "category": "${category}",
+                "ingredients": [
+                  {
+                    "name": "ingredient1",
+                    "amount": "1 cup",
+                    "estimatedCost": 2.50
+                  },
+                  {
+                    "name": "ingredient2",
+                    "amount": "200g",
+                    "estimatedCost": 3.75
+                  }
+                ],
+                "recipe": "Step by step instructions",
+                "prepTime": 30,
+                "healthScore": 8,
+                "totalCost": 6.25,
+                "macros": {
+                  "calories": 500,
+                  "protein": 30,
+                  "carbs": 50,
+                  "fat": 20
+                }
               }
-            ],
-            "recipe": "Step by step instructions",
-            "prepTime": 30,
-            "healthScore": 8,
-            "totalCost": 6.25,
-            "macros": {
-              "calories": 500,
-              "protein": 30,
-              "carbs": 50,
-              "fat": 20
-            }
+            ]
           }
           
-          Return an array of ${count} meal objects.
+          Return exactly ${count} meal objects in the meals array.
           Provide realistic cost estimates for ingredients based on typical supermarket prices in ${currency}.`
         },
         {
@@ -148,7 +164,7 @@ export async function generateMealsByCategory(category: string, count: number = 
           content: `Generate ${count} ${category} recipes with detailed nutritional information and cost estimates.`
         }
       ],
-      model: "GPT-4o mini",
+      model: "gpt-4",  // We'll update this based on available models
       temperature: 0.7,
       max_tokens: 2000,
       response_format: { type: "json_object" }
@@ -161,6 +177,9 @@ export async function generateMealsByCategory(category: string, count: number = 
 
     try {
       const parsedContent = JSON.parse(content)
+      if (!parsedContent.meals || !Array.isArray(parsedContent.meals)) {
+        throw new Error('Invalid response format')
+      }
       return parsedContent.meals.map((meal: any) => ({
         ...meal,
         createdAt: new Date()

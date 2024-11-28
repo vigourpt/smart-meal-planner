@@ -23,7 +23,8 @@ export function Dashboard() {
     resetShoppingListSpending,
     addSavedMeal,
     generateShoppingListFromMealPlan,
-    weeklyBudget
+    weeklyBudget,
+    preferences
   } = useStore(state => ({
     mealPlan: state.mealPlan,
     updateMealPlan: state.updateMealPlan,
@@ -32,7 +33,8 @@ export function Dashboard() {
     resetShoppingListSpending: state.resetShoppingListSpending,
     addSavedMeal: state.addSavedMeal,
     generateShoppingListFromMealPlan: state.generateShoppingListFromMealPlan,
-    weeklyBudget: state.preferences.weeklyBudget
+    weeklyBudget: state.preferences.weeklyBudget,
+    preferences: state.preferences
   }));
 
   const currentSpending = shoppingList.reduce((total, item) => total + item.ingredient.estimatedCost, 0);
@@ -54,8 +56,21 @@ export function Dashboard() {
   const handleAutoGenerate = async () => {
     try {
       setIsGenerating(true);
-      const result = await generateFullMealPlan("");
+      const preferencesString = `
+        Dietary restrictions: ${preferences.dietary.join(', ')}
+        Allergies: ${preferences.allergies.join(', ')}
+        Cuisine types: ${preferences.cuisineTypes.join(', ')}
+        Servings: ${preferences.servings}
+      `;
+
+      console.log('Generating meal plan with preferences:', preferencesString);
+      const result = await generateFullMealPlan(preferencesString);
+      console.log('Generated meal plan:', result);
       
+      if (!result || !result.meals || !Array.isArray(result.meals)) {
+        throw new Error('Invalid meal plan response');
+      }
+
       // Save each meal to the database
       result.meals.forEach(meal => {
         addSavedMeal(meal);
@@ -73,6 +88,7 @@ export function Dashboard() {
         }, {} as Record<string, { recipe: any }>)
       };
 
+      console.log('Updating meal plan:', newMealPlan);
       updateMealPlan(newMealPlan);
       generateShoppingListFromMealPlan(newMealPlan);
 
@@ -84,6 +100,7 @@ export function Dashboard() {
       });
     } catch (error) {
       console.error('Error generating meal plan:', error);
+      alert('Failed to generate meal plan. Please check the console for details.');
     } finally {
       setIsGenerating(false);
     }

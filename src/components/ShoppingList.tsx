@@ -8,12 +8,14 @@ export function ShoppingList() {
     currency,
     shoppingList,
     updateShoppingList,
-    resetShoppingListSpending
+    resetShoppingListSpending,
+    weeklyBudget
   } = useStore(state => ({
     currency: state.settings.currency,
     shoppingList: state.shoppingList,
     updateShoppingList: state.updateShoppingList,
-    resetShoppingListSpending: state.resetShoppingListSpending
+    resetShoppingListSpending: state.resetShoppingListSpending,
+    weeklyBudget: state.preferences.weeklyBudget
   }))
 
   const estimatedTotal = shoppingList.reduce((total, item) => total + item.ingredient.estimatedCost, 0)
@@ -51,7 +53,7 @@ export function ShoppingList() {
             </div>
             <div className="flex items-center gap-1 text-sm text-gray-600">
               <DollarSign className="h-4 w-4" />
-              <span>Total: {formatCurrency(estimatedTotal, currency)}</span>
+              <span>Total: {formatCurrency(estimatedTotal, currency)} / {formatCurrency(weeklyBudget, currency)}</span>
             </div>
           </div>
         </div>
@@ -115,6 +117,11 @@ export function ShoppingList() {
               </div>
             </li>
           ))}
+          {shoppingList.length === 0 && (
+            <li className="px-6 py-8 text-center text-gray-500">
+              No items in shopping list. Add meals to your plan to generate a shopping list.
+            </li>
+          )}
         </ul>
       </div>
     </div>
