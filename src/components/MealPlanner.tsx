@@ -3,8 +3,9 @@ import { useStore } from '../lib/store'
 import { generateFullMealPlan } from '../lib/openai'
 import { ApiKeyModal } from './ApiKeyModal'
 import { RecipeSelector } from './RecipeSelector'
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Users } from 'lucide-react'
 import type { GeneratedMeal } from '../lib/firebase'
+import { formatCurrency } from '../lib/currency'
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack']
@@ -29,16 +30,20 @@ export default function MealPlanner() {
     mealPlan,
     updateMealPlan,
     updateMealInPlan,
+    updateMealServings,
     preferences,
     generateShoppingListFromMealPlan,
-    apiKey
+    apiKey,
+    currency
   } = useStore(state => ({
     mealPlan: state.mealPlan,
     updateMealPlan: state.updateMealPlan,
     updateMealInPlan: state.updateMealInPlan,
+    updateMealServings: state.updateMealServings,
     preferences: state.preferences,
     generateShoppingListFromMealPlan: state.generateShoppingListFromMealPlan,
-    apiKey: state.settings.apiKey
+    apiKey: state.settings.apiKey,
+    currency: state.settings.currency
   }))
 
   const handleGenerateMealPlan = async () => {
@@ -65,9 +70,12 @@ export default function MealPlanner() {
           const mealType = index % 4
           const dayName = DAYS[day]
           const mealTypeName = MEAL_TYPES[mealType]
-          acc[`${dayName}-${mealTypeName}`] = { recipe: meal }
+          acc[`${dayName}-${mealTypeName}`] = { 
+            recipe: meal,
+            servings: preferences.servings
+          }
           return acc
-        }, {} as Record<string, { recipe: GeneratedMeal }>)
+        }, {} as Record<string, { recipe: GeneratedMeal, servings: number }>)
       }
       updateMealPlan(newMealPlan)
       generateShoppingListFromMealPlan(newMealPlan)
@@ -109,20 +117,16 @@ export default function MealPlanner() {
   }
 
   const handleSelectRecipe = (recipe: GeneratedMeal) => {
-    // Update meal plan
-    const currentMealPlan = mealPlan || { meals: {} }
-    const newMealPlan = {
-      meals: {
-        ...currentMealPlan.meals,
-        [`${recipeSelector.day}-${recipeSelector.mealType}`]: { recipe }
-      }
-    }
-    updateMealPlan(newMealPlan)
-    
-    // Update shopping list
-    generateShoppingListFromMealPlan(newMealPlan)
-    
+    updateMealInPlan(recipeSelector.day, recipeSelector.mealType, recipe, preferences.servings)
     handleCloseRecipeSelector()
+  }
+
+  const handleServingsChange = (day: string, mealType: string, servings: number) => {
+    updateMealServings(day, mealType, servings)
+    // Regenerate shopping list with new servings
+    if (mealPlan) {
+      generateShoppingListFromMealPlan(mealPlan)
+    }
   }
 
   if (!apiKey) {
@@ -179,13 +183,26 @@ export default function MealPlanner() {
                 return (
                   <div key={`${day}-${mealType}`} className="h-32 p-2 border-b border-gray-200">
                     {meal?.recipe ? (
-                      <div className="w-full h-full p-2 bg-emerald-50 rounded-lg">
+                      <div className="w-full h-full p-2 bg-emerald-50 rounded-lg flex flex-col">
                         <p className="text-sm font-medium text-emerald-900 truncate">
                           {meal.recipe.name}
                         </p>
-                        <p className="text-xs text-emerald-600 mt-1">
-                          {meal.recipe.macros.calories} kcal
-                        </p>
+                        <div className="mt-1 text-xs text-emerald-600 space-y-1">
+                          <p>{meal.recipe.macros.calories} kcal</p>
+                          <p>{formatCurrency(meal.recipe.totalCost, currency)}</p>
+                          <div className="flex items-center space-x-1">
+                            <Users className="h-3 w-3" />
+                            <select
+                              value={meal.servings}
+                              onChange={(e) => handleServingsChange(day, mealType, parseInt(e.target.value))}
+                              className="text-xs bg-transparent border-none p-0"
+                            >
+                              {[1,2,3,4,5,6,7,8].map(num => (
+                                <option key={num} value={num}>{num}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
                       </div>
                     ) : (
                       <button
