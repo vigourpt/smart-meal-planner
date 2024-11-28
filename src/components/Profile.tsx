@@ -1,191 +1,269 @@
 import React, { useState } from 'react'
 import { useStore } from '../lib/store'
-import { 
-  User as UserIcon, 
-  Plus,
-  X
-} from 'lucide-react'
+import { Plus, X } from 'lucide-react'
+
+const COMMON_DIETARY_RESTRICTIONS = [
+  'Vegetarian',
+  'Vegan',
+  'Gluten-free',
+  'Dairy-free',
+  'Keto',
+  'Low-carb',
+  'Paleo',
+  'Mediterranean',
+  'Pescatarian',
+  'Halal',
+  'Kosher'
+]
+
+const COMMON_ALLERGIES = [
+  'Peanuts',
+  'Tree nuts',
+  'Milk',
+  'Eggs',
+  'Soy',
+  'Wheat',
+  'Fish',
+  'Shellfish',
+  'Sesame'
+]
+
+const COMMON_HEALTH_GOALS = [
+  'Weight loss',
+  'Muscle gain',
+  'Heart health',
+  'Blood sugar control',
+  'Energy boost',
+  'Immune support',
+  'Anti-inflammatory',
+  'Gut health'
+]
 
 export function Profile() {
-  const { 
-    preferences, 
-    updatePreferences,
-  } = useStore(state => ({
+  const { preferences, updatePreferences } = useStore(state => ({
     preferences: state.preferences,
-    updatePreferences: state.updatePreferences,
+    updatePreferences: state.updatePreferences
   }))
 
   const [newDietary, setNewDietary] = useState('')
   const [newAllergy, setNewAllergy] = useState('')
-  const [newGoal, setNewGoal] = useState('')
-  const [healthGoals, setHealthGoals] = useState<string[]>([
-    'Maintain a balanced diet',
-    'Increase protein intake'
-  ])
+  const [newHealthGoal, setNewHealthGoal] = useState('')
 
-  const handleAddDietary = () => {
-    if (newDietary.trim()) {
+  const handleAddDietary = (value: string) => {
+    if (value && !preferences.dietary.includes(value)) {
       updatePreferences({
-        dietary: [...preferences.dietary, newDietary.trim()]
+        dietary: [...preferences.dietary, value]
       })
-      setNewDietary('')
     }
+    setNewDietary('')
   }
 
-  const handleRemoveDietary = (index: number) => {
+  const handleAddAllergy = (value: string) => {
+    if (value && !preferences.allergies.includes(value)) {
+      updatePreferences({
+        allergies: [...preferences.allergies, value]
+      })
+    }
+    setNewAllergy('')
+  }
+
+  const handleAddHealthGoal = (value: string) => {
+    if (value && !preferences.cuisineTypes.includes(value)) {
+      updatePreferences({
+        cuisineTypes: [...preferences.cuisineTypes, value]
+      })
+    }
+    setNewHealthGoal('')
+  }
+
+  const handleRemoveDietary = (restriction: string) => {
     updatePreferences({
-      dietary: preferences.dietary.filter((_, i) => i !== index)
+      dietary: preferences.dietary.filter(d => d !== restriction)
     })
   }
 
-  const handleAddAllergy = () => {
-    if (newAllergy.trim()) {
-      updatePreferences({
-        allergies: [...preferences.allergies, newAllergy.trim()]
-      })
-      setNewAllergy('')
-    }
-  }
-
-  const handleRemoveAllergy = (index: number) => {
+  const handleRemoveAllergy = (allergy: string) => {
     updatePreferences({
-      allergies: preferences.allergies.filter((_, i) => i !== index)
+      allergies: preferences.allergies.filter(a => a !== allergy)
     })
   }
 
-  const handleAddGoal = () => {
-    if (newGoal.trim() && !healthGoals.includes(newGoal.trim())) {
-      setHealthGoals([...healthGoals, newGoal.trim()])
-      setNewGoal('')
-    }
+  const handleRemoveHealthGoal = (goal: string) => {
+    updatePreferences({
+      cuisineTypes: preferences.cuisineTypes.filter(c => c !== goal)
+    })
   }
 
-  const handleRemoveGoal = (index: number) => {
-    setHealthGoals(healthGoals.filter((_, i) => i !== index))
+  const handleServingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(e.target.value)
+    if (!isNaN(value) && value > 0) {
+      updatePreferences({ servings: value })
+    }
   }
 
   return (
     <div className="max-w-3xl mx-auto space-y-8">
-      <div className="bg-white shadow sm:rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <div className="flex items-center space-x-3 mb-6">
-            <UserIcon className="h-6 w-6 text-emerald-600" />
-            <h3 className="text-lg font-medium text-gray-900">Profile Settings</h3>
-          </div>
+      <h2 className="text-2xl font-bold">Profile</h2>
 
-          {/* Dietary Restrictions */}
-          <div className="mb-8">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Dietary Restrictions
-            </label>
-            <div className="flex rounded-md shadow-sm">
-              <input
-                type="text"
-                value={newDietary}
-                onChange={(e) => setNewDietary(e.target.value)}
-                className="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-l-md focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm border-gray-300"
-                placeholder="Add dietary restriction..."
-              />
+      {/* Dietary Restrictions */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-medium">Dietary Restrictions</h3>
+        <div className="flex flex-wrap gap-2">
+          {preferences.dietary.map(restriction => (
+            <span
+              key={restriction}
+              className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-emerald-100 text-emerald-800"
+            >
+              {restriction}
               <button
-                onClick={handleAddDietary}
-                className="inline-flex items-center px-3 py-2 border border-l-0 border-gray-300 rounded-r-md bg-gray-50 hover:bg-gray-100"
+                onClick={() => handleRemoveDietary(restriction)}
+                className="ml-2 inline-flex items-center"
               >
-                <Plus className="h-4 w-4 text-gray-400" />
+                <X className="h-4 w-4" />
               </button>
-            </div>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {preferences.dietary.map((item, index) => (
-                <span
-                  key={index}
-                  className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800"
-                >
-                  {item}
-                  <button
-                    onClick={() => handleRemoveDietary(index)}
-                    className="ml-1.5 inline-flex items-center justify-center"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              ))}
-            </div>
+            </span>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <select
+            value=""
+            onChange={(e) => handleAddDietary(e.target.value)}
+            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+          >
+            <option value="">Select or type below to add...</option>
+            {COMMON_DIETARY_RESTRICTIONS.filter(d => !preferences.dietary.includes(d)).map(diet => (
+              <option key={diet} value={diet}>{diet}</option>
+            ))}
+          </select>
+          <div className="relative flex-1">
+            <input
+              type="text"
+              value={newDietary}
+              onChange={(e) => setNewDietary(e.target.value)}
+              placeholder="Add custom restriction..."
+              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm pr-10"
+            />
+            <button
+              onClick={() => handleAddDietary(newDietary)}
+              className="absolute inset-y-0 right-0 flex items-center pr-3"
+            >
+              <Plus className="h-4 w-4 text-gray-400" />
+            </button>
           </div>
+        </div>
+      </div>
 
-          {/* Allergies */}
-          <div className="mb-8">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Allergies
-            </label>
-            <div className="flex rounded-md shadow-sm">
-              <input
-                type="text"
-                value={newAllergy}
-                onChange={(e) => setNewAllergy(e.target.value)}
-                className="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-l-md focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm border-gray-300"
-                placeholder="Add allergy..."
-              />
+      {/* Allergies */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-medium">Allergies</h3>
+        <div className="flex flex-wrap gap-2">
+          {preferences.allergies.map(allergy => (
+            <span
+              key={allergy}
+              className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800"
+            >
+              {allergy}
               <button
-                onClick={handleAddAllergy}
-                className="inline-flex items-center px-3 py-2 border border-l-0 border-gray-300 rounded-r-md bg-gray-50 hover:bg-gray-100"
+                onClick={() => handleRemoveAllergy(allergy)}
+                className="ml-2 inline-flex items-center"
               >
-                <Plus className="h-4 w-4 text-gray-400" />
+                <X className="h-4 w-4" />
               </button>
-            </div>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {preferences.allergies.map((item, index) => (
-                <span
-                  key={index}
-                  className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800"
-                >
-                  {item}
-                  <button
-                    onClick={() => handleRemoveAllergy(index)}
-                    className="ml-1.5 inline-flex items-center justify-center"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              ))}
-            </div>
+            </span>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <select
+            value=""
+            onChange={(e) => handleAddAllergy(e.target.value)}
+            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+          >
+            <option value="">Select or type below to add...</option>
+            {COMMON_ALLERGIES.filter(a => !preferences.allergies.includes(a)).map(allergy => (
+              <option key={allergy} value={allergy}>{allergy}</option>
+            ))}
+          </select>
+          <div className="relative flex-1">
+            <input
+              type="text"
+              value={newAllergy}
+              onChange={(e) => setNewAllergy(e.target.value)}
+              placeholder="Add custom allergy..."
+              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm pr-10"
+            />
+            <button
+              onClick={() => handleAddAllergy(newAllergy)}
+              className="absolute inset-y-0 right-0 flex items-center pr-3"
+            >
+              <Plus className="h-4 w-4 text-gray-400" />
+            </button>
           </div>
+        </div>
+      </div>
 
-          {/* Health Goals */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Health Goals
-            </label>
-            <div className="flex rounded-md shadow-sm">
-              <input
-                type="text"
-                value={newGoal}
-                onChange={(e) => setNewGoal(e.target.value)}
-                className="flex-1 min-w-0 block w-full px-3 py-2 rounded-none rounded-l-md focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm border-gray-300"
-                placeholder="Add health goal..."
-              />
+      {/* Health Goals */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-medium">Health Goals</h3>
+        <div className="flex flex-wrap gap-2">
+          {preferences.cuisineTypes.map(goal => (
+            <span
+              key={goal}
+              className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
+            >
+              {goal}
               <button
-                onClick={handleAddGoal}
-                className="inline-flex items-center px-3 py-2 border border-l-0 border-gray-300 rounded-r-md bg-gray-50 hover:bg-gray-100"
+                onClick={() => handleRemoveHealthGoal(goal)}
+                className="ml-2 inline-flex items-center"
               >
-                <Plus className="h-4 w-4 text-gray-400" />
+                <X className="h-4 w-4" />
               </button>
-            </div>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {healthGoals.map((goal, index) => (
-                <span
-                  key={index}
-                  className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-                >
-                  {goal}
-                  <button
-                    onClick={() => handleRemoveGoal(index)}
-                    className="ml-1.5 inline-flex items-center justify-center"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              ))}
-            </div>
+            </span>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <select
+            value=""
+            onChange={(e) => handleAddHealthGoal(e.target.value)}
+            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+          >
+            <option value="">Select or type below to add...</option>
+            {COMMON_HEALTH_GOALS.filter(g => !preferences.cuisineTypes.includes(g)).map(goal => (
+              <option key={goal} value={goal}>{goal}</option>
+            ))}
+          </select>
+          <div className="relative flex-1">
+            <input
+              type="text"
+              value={newHealthGoal}
+              onChange={(e) => setNewHealthGoal(e.target.value)}
+              placeholder="Add custom goal..."
+              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm pr-10"
+            />
+            <button
+              onClick={() => handleAddHealthGoal(newHealthGoal)}
+              className="absolute inset-y-0 right-0 flex items-center pr-3"
+            >
+              <Plus className="h-4 w-4 text-gray-400" />
+            </button>
           </div>
+        </div>
+      </div>
+
+      {/* Servings */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-medium">Default Servings</h3>
+        <div className="max-w-xs">
+          <input
+            type="number"
+            min="1"
+            max="8"
+            value={preferences.servings}
+            onChange={handleServingsChange}
+            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+          />
+          <p className="mt-2 text-sm text-gray-500">
+            Number of servings for generated recipes
+          </p>
         </div>
       </div>
     </div>
