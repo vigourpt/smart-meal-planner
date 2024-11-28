@@ -59,16 +59,34 @@ export function Settings() {
 
           <div className="space-y-6">
             <form onSubmit={handleApiKeySubmit}>
-              <label className="block text-sm font-medium text-gray-700">
+              {/* Hidden username field for accessibility */}
+              <div className="sr-only">
+                <label htmlFor="settings-username" className="block text-sm font-medium text-gray-700">
+                  Username
+                </label>
+                <input
+                  type="text"
+                  id="settings-username"
+                  name="username"
+                  autoComplete="username"
+                  tabIndex={-1}
+                  aria-hidden="true"
+                  style={{ display: 'none' }}
+                />
+              </div>
+
+              <label htmlFor="settings-apiKey" className="block text-sm font-medium text-gray-700">
                 OpenAI API Key
               </label>
               <div className="mt-1">
                 <input
                   type="password"
+                  id="settings-apiKey"
                   name="apiKey"
                   defaultValue={apiKey || ''}
                   placeholder="sk-..."
                   className="shadow-sm focus:ring-emerald-500 focus:border-emerald-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                  autoComplete="current-password"
                 />
                 <p className="mt-2 text-sm text-gray-500">
                   Your API key is stored locally and never shared.

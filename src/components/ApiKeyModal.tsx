@@ -22,6 +22,22 @@ export function ApiKeyModal() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Hidden username field for accessibility */}
+          <div className="sr-only">
+            <label htmlFor="username" className="block text-sm font-medium text-gray-700">
+              Username
+            </label>
+            <input
+              type="text"
+              id="username"
+              name="username"
+              autoComplete="username"
+              tabIndex={-1}
+              aria-hidden="true"
+              style={{ display: 'none' }}
+            />
+          </div>
+
           <div>
             <label htmlFor="apiKey" className="block text-sm font-medium text-gray-700">
               Enter your OpenAI API Key
@@ -36,6 +52,7 @@ export function ApiKeyModal() {
                 placeholder="sk-..."
                 className="shadow-sm focus:ring-emerald-500 focus:border-emerald-500 block w-full sm:text-sm border-gray-300 rounded-md"
                 required
+                autoComplete="current-password"
               />
             </div>
             <p className="mt-2 text-sm text-gray-500">
