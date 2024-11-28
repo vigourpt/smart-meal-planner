@@ -18,17 +18,15 @@ export async function generateFullMealPlan(preferences: string): Promise<{ meals
     const openai = getClient()
     const currency = useStore.getState().settings.currency
 
-    // First, check available models
-    const models = await openai.models.list()
-    console.log('Available models:', models.data.map(m => m.id))
-
     const completion = await openai.chat.completions.create({
       messages: [
         {
           role: "system",
-          content: `You are a meal planning assistant. Generate 40 meals total: 10 each for breakfast, lunch, dinner, and snacks. 
+          content: `You are a meal planning assistant. Generate 40 UNIQUE meals total: 10 each for breakfast, lunch, dinner, and snacks. 
+          Each category must have completely different meals - no duplicates within or across categories.
+          
           For each meal, include:
-          - Name
+          - Name (must be unique)
           - List of ingredients with estimated costs in ${currency}
           - Detailed recipe instructions
           - Preparation time
@@ -39,7 +37,7 @@ export async function generateFullMealPlan(preferences: string): Promise<{ meals
           {
             "meals": [
               {
-                "name": "Meal Name",
+                "name": "Unique Meal Name",
                 "category": "breakfast|lunch|dinner|snack",
                 "ingredients": [
                   {
@@ -67,17 +65,22 @@ export async function generateFullMealPlan(preferences: string): Promise<{ meals
             ]
           }
           
-          Return exactly 40 meal objects in the meals array, ensuring variety and adherence to the provided preferences.
-          Provide realistic cost estimates for ingredients based on typical supermarket prices in ${currency}.
+          Important requirements:
+          1. Generate EXACTLY 40 meals (10 each category)
+          2. Each meal name must be unique
+          3. Ensure variety in ingredients and cooking methods
+          4. Provide realistic cost estimates in ${currency}
+          5. Include detailed macros for each meal
+          6. Make meals appropriate for their category (breakfast foods for breakfast, etc.)
           
-          Important: Your entire response must be a valid JSON string that can be parsed with JSON.parse().`
+          Your entire response must be a valid JSON string that can be parsed with JSON.parse().`
         },
         {
           role: "user",
           content: `Generate a meal plan based on these preferences: ${preferences}`
         }
       ],
-      model: "gpt-4",
+      model: "gpt-4-turbo-preview",
       temperature: 0.7,
       max_tokens: 4000
     })
@@ -92,6 +95,22 @@ export async function generateFullMealPlan(preferences: string): Promise<{ meals
       if (!parsedContent.meals || !Array.isArray(parsedContent.meals)) {
         throw new Error('Invalid response format')
       }
+
+      // Verify we have enough meals in each category
+      const categories = ['breakfast', 'lunch', 'dinner', 'snack']
+      categories.forEach(category => {
+        const mealsInCategory = parsedContent.meals.filter((m: any) => m.category === category)
+        if (mealsInCategory.length < 10) {
+          throw new Error(`Not enough ${category} meals generated. Expected 10, got ${mealsInCategory.length}`)
+        }
+      })
+
+      // Verify meal names are unique
+      const mealNames = new Set(parsedContent.meals.map((m: any) => m.name))
+      if (mealNames.size !== parsedContent.meals.length) {
+        throw new Error('Duplicate meal names detected')
+      }
+
       return {
         meals: parsedContent.meals.map((meal: any) => ({
           ...meal,
@@ -117,9 +136,9 @@ export async function generateMealsByCategory(category: string, count: number = 
       messages: [
         {
           role: "system",
-          content: `You are a meal planning assistant. Generate ${count} ${category} recipes.
+          content: `You are a meal planning assistant. Generate ${count} UNIQUE ${category} recipes.
           For each meal, include:
-          - Name
+          - Name (must be unique)
           - List of ingredients with estimated costs in ${currency}
           - Detailed recipe instructions
           - Preparation time
@@ -130,7 +149,7 @@ export async function generateMealsByCategory(category: string, count: number = 
           {
             "meals": [
               {
-                "name": "Meal Name",
+                "name": "Unique Meal Name",
                 "category": "${category}",
                 "ingredients": [
                   {
@@ -158,17 +177,21 @@ export async function generateMealsByCategory(category: string, count: number = 
             ]
           }
           
-          Return exactly ${count} meal objects in the meals array.
-          Provide realistic cost estimates for ingredients based on typical supermarket prices in ${currency}.
+          Important requirements:
+          1. Generate EXACTLY ${count} unique meals
+          2. Each meal name must be unique
+          3. Ensure variety in ingredients and cooking methods
+          4. Provide realistic cost estimates in ${currency}
+          5. Include detailed macros for each meal
           
-          Important: Your entire response must be a valid JSON string that can be parsed with JSON.parse().`
+          Your entire response must be a valid JSON string that can be parsed with JSON.parse().`
         },
         {
           role: "user",
           content: `Generate ${count} ${category} recipes with detailed nutritional information and cost estimates.`
         }
       ],
-      model: "gpt-4",
+      model: "gpt-4-turbo-preview",
       temperature: 0.7,
       max_tokens: 2000
     })
@@ -183,6 +206,13 @@ export async function generateMealsByCategory(category: string, count: number = 
       if (!parsedContent.meals || !Array.isArray(parsedContent.meals)) {
         throw new Error('Invalid response format')
       }
+
+      // Verify meal names are unique
+      const mealNames = new Set(parsedContent.meals.map((m: any) => m.name))
+      if (mealNames.size !== parsedContent.meals.length) {
+        throw new Error('Duplicate meal names detected')
+      }
+
       return parsedContent.meals.map((meal: any) => ({
         ...meal,
         createdAt: new Date()

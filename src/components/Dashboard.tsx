@@ -85,7 +85,7 @@ export function Dashboard() {
         }
       }));
 
-      // Create meal plan with 28 meals (4 per day for 7 days)
+      // Organize meals by type
       const mealsByType = {
         breakfast: savedMeals.filter(meal => meal.category === 'breakfast'),
         lunch: savedMeals.filter(meal => meal.category === 'lunch'),
@@ -93,16 +93,22 @@ export function Dashboard() {
         snack: savedMeals.filter(meal => meal.category === 'snack')
       };
 
+      // Ensure we have enough unique meals for each type
+      if (Object.values(mealsByType).some(meals => meals.length < 7)) {
+        throw new Error('Not enough unique meals generated for each category');
+      }
+
       const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
       const mealTypes = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
 
+      // Create meal plan ensuring different meals each day
       const newMealPlan = {
         meals: days.reduce((acc, day, dayIndex) => {
           mealTypes.forEach((type, typeIndex) => {
             const lowerType = type.toLowerCase();
             const meals = mealsByType[lowerType as keyof typeof mealsByType];
-            const mealIndex = dayIndex % meals.length;
-            acc[`${day}-${type}`] = { recipe: meals[mealIndex] };
+            // Use dayIndex to ensure different meals each day
+            acc[`${day}-${type}`] = { recipe: meals[dayIndex] };
           });
           return acc;
         }, {} as Record<string, { recipe: any }>)
