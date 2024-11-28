@@ -13,6 +13,14 @@ function getClient() {
   })
 }
 
+function cleanJsonResponse(content: string): string {
+  // Remove markdown code block markers and any extra whitespace
+  return content
+    .replace(/```json\n?/g, '')
+    .replace(/```\n?/g, '')
+    .trim()
+}
+
 export async function generateFullMealPlan(preferences: string): Promise<{ meals: GeneratedMeal[] }> {
   try {
     const openai = getClient()
@@ -33,7 +41,7 @@ export async function generateFullMealPlan(preferences: string): Promise<{ meals
           - Health score (1-10)
           - Detailed macros (calories, protein, carbs, fat)
           
-          Your response must be a valid JSON string with this exact structure:
+          Return a JSON object with this exact structure:
           {
             "meals": [
               {
@@ -73,7 +81,7 @@ export async function generateFullMealPlan(preferences: string): Promise<{ meals
           5. Include detailed macros for each meal
           6. Make meals appropriate for their category (breakfast foods for breakfast, etc.)
           
-          Your entire response must be a valid JSON string that can be parsed with JSON.parse().`
+          Return ONLY the JSON object, no markdown or code block markers.`
         },
         {
           role: "user",
@@ -91,7 +99,10 @@ export async function generateFullMealPlan(preferences: string): Promise<{ meals
     }
 
     try {
-      const parsedContent = JSON.parse(content)
+      const cleanedContent = cleanJsonResponse(content)
+      console.log('Cleaned content:', cleanedContent)
+      
+      const parsedContent = JSON.parse(cleanedContent)
       if (!parsedContent.meals || !Array.isArray(parsedContent.meals)) {
         throw new Error('Invalid response format')
       }
@@ -145,7 +156,7 @@ export async function generateMealsByCategory(category: string, count: number = 
           - Health score (1-10)
           - Detailed macros (calories, protein, carbs, fat)
           
-          Your response must be a valid JSON string with this exact structure:
+          Return a JSON object with this exact structure:
           {
             "meals": [
               {
@@ -184,7 +195,7 @@ export async function generateMealsByCategory(category: string, count: number = 
           4. Provide realistic cost estimates in ${currency}
           5. Include detailed macros for each meal
           
-          Your entire response must be a valid JSON string that can be parsed with JSON.parse().`
+          Return ONLY the JSON object, no markdown or code block markers.`
         },
         {
           role: "user",
@@ -202,7 +213,10 @@ export async function generateMealsByCategory(category: string, count: number = 
     }
 
     try {
-      const parsedContent = JSON.parse(content)
+      const cleanedContent = cleanJsonResponse(content)
+      console.log('Cleaned content:', cleanedContent)
+      
+      const parsedContent = JSON.parse(cleanedContent)
       if (!parsedContent.meals || !Array.isArray(parsedContent.meals)) {
         throw new Error('Invalid response format')
       }
