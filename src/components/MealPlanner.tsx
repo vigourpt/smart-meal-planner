@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
 import { useStore } from '../lib/store'
-import { generateFullMealPlan } from '../lib/openai'
+import { generateFullMealPlan, generateMealsByCategory } from '../lib/openai'
 import { ApiKeyModal } from './ApiKeyModal'
 import { RecipeSelector } from './RecipeSelector'
-import { ChevronLeft, ChevronRight, Plus, Users } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Users, MoreVertical, RefreshCw, List } from 'lucide-react'
 import type { GeneratedMeal } from '../lib/firebase'
 import { formatCurrency } from '../lib/currency'
 
@@ -16,14 +16,39 @@ interface RecipeSelectorState {
   mealType: string
 }
 
+interface ContextMenuState {
+  isOpen: boolean
+  day: string
+  mealType: string
+  x: number
+  y: number
+}
+
+interface MealPlanItem {
+  recipe: GeneratedMeal
+  servings: number
+}
+
+interface MealPlanAccumulator {
+  [key: string]: MealPlanItem
+}
+
 export default function MealPlanner() {
   const [currentWeek, setCurrentWeek] = useState(new Date())
   const [isGenerating, setIsGenerating] = useState(false)
+  const [generatingMeal, setGeneratingMeal] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [recipeSelector, setRecipeSelector] = useState<RecipeSelectorState>({
     isOpen: false,
     day: '',
     mealType: ''
+  })
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>({
+    isOpen: false,
+    day: '',
+    mealType: '',
+    x: 0,
+    y: 0
   })
   
   const {
@@ -34,7 +59,8 @@ export default function MealPlanner() {
     preferences,
     generateShoppingListFromMealPlan,
     apiKey,
-    currency
+    currency,
+    savedMeals
   } = useStore(state => ({
     mealPlan: state.mealPlan,
     updateMealPlan: state.updateMealPlan,
@@ -43,7 +69,8 @@ export default function MealPlanner() {
     preferences: state.preferences,
     generateShoppingListFromMealPlan: state.generateShoppingListFromMealPlan,
     apiKey: state.settings.apiKey,
-    currency: state.settings.currency
+    currency: state.settings.currency,
+    savedMeals: state.savedMeals
   }))
 
   const handleGenerateMealPlan = async () => {
@@ -65,7 +92,7 @@ export default function MealPlanner() {
 
       const result = await generateFullMealPlan(preferencesString)
       const newMealPlan = {
-        meals: result.meals.reduce((acc, meal, index) => {
+        meals: result.meals.reduce((acc: MealPlanAccumulator, meal: GeneratedMeal, index: number) => {
           const day = Math.floor(index / 4)
           const mealType = index % 4
           const dayName = DAYS[day]
@@ -75,7 +102,7 @@ export default function MealPlanner() {
             servings: preferences.servings
           }
           return acc
-        }, {} as Record<string, { recipe: GeneratedMeal, servings: number }>)
+        }, {})
       }
       updateMealPlan(newMealPlan)
       generateShoppingListFromMealPlan(newMealPlan)
@@ -83,6 +110,37 @@ export default function MealPlanner() {
       setError(err instanceof Error ? err.message : 'Failed to generate meal plan')
     } finally {
       setIsGenerating(false)
+    }
+  }
+
+  const handleRegenerateMeal = async (day: string, mealType: string) => {
+    if (!apiKey) {
+      setError('Please set your OpenAI API key first')
+      return
+    }
+
+    setGeneratingMeal(`${day}-${mealType}`)
+    setError(null)
+
+    try {
+      const preferencesString = `
+        Dietary restrictions: ${preferences.dietary.join(', ')}
+        Allergies: ${preferences.allergies.join(', ')}
+        Cuisine types: ${preferences.cuisineTypes.join(', ')}
+        Servings: ${preferences.servings}
+      `
+
+      const meals = await generateMealsByCategory(mealType.toLowerCase(), 1)
+      if (meals.length > 0) {
+        updateMealInPlan(day, mealType, meals[0], preferences.servings)
+        if (mealPlan) {
+          generateShoppingListFromMealPlan(mealPlan)
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate meal')
+    } finally {
+      setGeneratingMeal(null)
     }
   }
 
@@ -110,6 +168,7 @@ export default function MealPlanner() {
 
   const handleOpenRecipeSelector = (day: string, mealType: string) => {
     setRecipeSelector({ isOpen: true, day, mealType })
+    setContextMenu({ isOpen: false, day: '', mealType: '', x: 0, y: 0 })
   }
 
   const handleCloseRecipeSelector = () => {
@@ -119,11 +178,32 @@ export default function MealPlanner() {
   const handleSelectRecipe = (recipe: GeneratedMeal) => {
     updateMealInPlan(recipeSelector.day, recipeSelector.mealType, recipe, preferences.servings)
     handleCloseRecipeSelector()
+    if (mealPlan) {
+      generateShoppingListFromMealPlan(mealPlan)
+    }
   }
 
   const handleServingsChange = (day: string, mealType: string, servings: number) => {
     updateMealServings(day, mealType, servings)
-    // Regenerate shopping list with new servings
+    if (mealPlan) {
+      generateShoppingListFromMealPlan(mealPlan)
+    }
+  }
+
+  const handleContextMenu = (e: React.MouseEvent, day: string, mealType: string) => {
+    e.preventDefault()
+    setContextMenu({
+      isOpen: true,
+      day,
+      mealType,
+      x: e.clientX,
+      y: e.clientY
+    })
+  }
+
+  const handleSelectSavedMeal = (meal: GeneratedMeal) => {
+    updateMealInPlan(contextMenu.day, contextMenu.mealType, meal, preferences.servings)
+    setContextMenu({ isOpen: false, day: '', mealType: '', x: 0, y: 0 })
     if (mealPlan) {
       generateShoppingListFromMealPlan(mealPlan)
     }
@@ -180,13 +260,25 @@ export default function MealPlanner() {
               </div>
               {MEAL_TYPES.map((mealType) => {
                 const meal = mealPlan?.meals[`${day}-${mealType}`]
+                const isGeneratingThis = generatingMeal === `${day}-${mealType}`
                 return (
                   <div key={`${day}-${mealType}`} className="h-32 p-2 border-b border-gray-200">
                     {meal?.recipe ? (
-                      <div className="w-full h-full p-2 bg-emerald-50 rounded-lg flex flex-col">
-                        <p className="text-sm font-medium text-emerald-900 truncate">
-                          {meal.recipe.name}
-                        </p>
+                      <div 
+                        className="relative w-full h-full p-2 bg-emerald-50 rounded-lg flex flex-col"
+                        onContextMenu={(e) => handleContextMenu(e, day, mealType)}
+                      >
+                        <div className="flex justify-between items-start">
+                          <p className="text-sm font-medium text-emerald-900 truncate">
+                            {meal.recipe.name}
+                          </p>
+                          <button
+                            onClick={(e) => handleContextMenu(e, day, mealType)}
+                            className="p-1 hover:bg-emerald-100 rounded"
+                          >
+                            <MoreVertical className="h-4 w-4 text-emerald-600" />
+                          </button>
+                        </div>
                         <div className="mt-1 text-xs text-emerald-600 space-y-1">
                           <p>{meal.recipe.macros.calories} kcal</p>
                           <p>{formatCurrency(meal.recipe.totalCost, currency)}</p>
@@ -209,7 +301,11 @@ export default function MealPlanner() {
                         onClick={() => handleOpenRecipeSelector(day, mealType)}
                         className="w-full h-full flex items-center justify-center rounded-lg border-2 border-dashed border-gray-300 hover:border-gray-400 transition-colors"
                       >
-                        <Plus className="h-5 w-5 text-gray-400" />
+                        {isGeneratingThis ? (
+                          <RefreshCw className="h-5 w-5 text-gray-400 animate-spin" />
+                        ) : (
+                          <Plus className="h-5 w-5 text-gray-400" />
+                        )}
                       </button>
                     )}
                   </div>
@@ -220,6 +316,35 @@ export default function MealPlanner() {
         </div>
       </div>
 
+      {/* Context Menu */}
+      {contextMenu.isOpen && (
+        <div
+          className="fixed z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-1 w-48"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+        >
+          <div className="px-3 py-2 text-sm font-medium text-gray-900 border-b border-gray-200">
+            Select Action
+          </div>
+          <button
+            onClick={() => {
+              handleRegenerateMeal(contextMenu.day, contextMenu.mealType)
+              setContextMenu({ isOpen: false, day: '', mealType: '', x: 0, y: 0 })
+            }}
+            className="w-full px-3 py-2 text-sm text-left hover:bg-gray-100 flex items-center"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Regenerate Meal
+          </button>
+          <button
+            onClick={() => handleOpenRecipeSelector(contextMenu.day, contextMenu.mealType)}
+            className="w-full px-3 py-2 text-sm text-left hover:bg-gray-100 flex items-center"
+          >
+            <List className="h-4 w-4 mr-2" />
+            Select from Saved
+          </button>
+        </div>
+      )}
+
       {recipeSelector.isOpen && (
         <RecipeSelector
           isOpen={recipeSelector.isOpen}
@@ -227,6 +352,14 @@ export default function MealPlanner() {
           onSelect={handleSelectRecipe}
           day={recipeSelector.day}
           mealType={recipeSelector.mealType}
+        />
+      )}
+
+      {/* Click outside handler for context menu */}
+      {contextMenu.isOpen && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setContextMenu({ isOpen: false, day: '', mealType: '', x: 0, y: 0 })}
         />
       )}
     </div>
