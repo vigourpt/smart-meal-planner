@@ -11,6 +11,7 @@ import {
 import { useStore } from '../lib/store';
 import { formatCurrency } from '../lib/currency';
 import { generateFullMealPlan } from '../lib/openai';
+import { saveMeal } from '../lib/firebase';
 import confetti from 'canvas-confetti';
 
 export function Dashboard() {
@@ -71,19 +72,38 @@ export function Dashboard() {
         throw new Error('Invalid meal plan response');
       }
 
-      // Save each meal to the database
-      result.meals.forEach(meal => {
-        addSavedMeal(meal);
-      });
+      // Save each meal to Firebase and store
+      const savedMeals = await Promise.all(result.meals.map(async (meal) => {
+        try {
+          const id = await saveMeal(meal);
+          const savedMeal = { ...meal, id };
+          addSavedMeal(savedMeal);
+          return savedMeal;
+        } catch (error) {
+          console.error('Error saving meal:', error);
+          return meal;
+        }
+      }));
 
-      // Convert to meal plan format
+      // Create meal plan with 28 meals (4 per day for 7 days)
+      const mealsByType = {
+        breakfast: savedMeals.filter(meal => meal.category === 'breakfast'),
+        lunch: savedMeals.filter(meal => meal.category === 'lunch'),
+        dinner: savedMeals.filter(meal => meal.category === 'dinner'),
+        snack: savedMeals.filter(meal => meal.category === 'snack')
+      };
+
+      const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+      const mealTypes = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
+
       const newMealPlan = {
-        meals: result.meals.reduce((acc, meal, index) => {
-          const day = Math.floor(index / 4); // 4 meals per day including snacks
-          const mealType = index % 4;
-          const dayName = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][day];
-          const mealTypeName = ['Breakfast', 'Lunch', 'Dinner', 'Snack'][mealType];
-          acc[`${dayName}-${mealTypeName}`] = { recipe: meal };
+        meals: days.reduce((acc, day, dayIndex) => {
+          mealTypes.forEach((type, typeIndex) => {
+            const lowerType = type.toLowerCase();
+            const meals = mealsByType[lowerType as keyof typeof mealsByType];
+            const mealIndex = dayIndex % meals.length;
+            acc[`${day}-${type}`] = { recipe: meals[mealIndex] };
+          });
           return acc;
         }, {} as Record<string, { recipe: any }>)
       };
