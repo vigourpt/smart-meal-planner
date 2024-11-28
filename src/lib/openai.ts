@@ -35,7 +35,7 @@ export async function generateFullMealPlan(preferences: string): Promise<{ meals
           - Health score (1-10)
           - Detailed macros (calories, protein, carbs, fat)
           
-          Format each meal as a JSON object with the following structure:
+          Your response must be a valid JSON string with this exact structure:
           {
             "meals": [
               {
@@ -68,17 +68,18 @@ export async function generateFullMealPlan(preferences: string): Promise<{ meals
           }
           
           Return exactly 40 meal objects in the meals array, ensuring variety and adherence to the provided preferences.
-          Provide realistic cost estimates for ingredients based on typical supermarket prices in ${currency}.`
+          Provide realistic cost estimates for ingredients based on typical supermarket prices in ${currency}.
+          
+          Important: Your entire response must be a valid JSON string that can be parsed with JSON.parse().`
         },
         {
           role: "user",
           content: `Generate a meal plan based on these preferences: ${preferences}`
         }
       ],
-      model: "gpt-4",  // We'll update this based on available models
+      model: "gpt-4",
       temperature: 0.7,
-      max_tokens: 4000,
-      response_format: { type: "json_object" }
+      max_tokens: 4000
     })
 
     const content = completion.choices[0].message.content
@@ -99,6 +100,7 @@ export async function generateFullMealPlan(preferences: string): Promise<{ meals
       }
     } catch (error) {
       console.error('Error parsing OpenAI response:', error)
+      console.error('Raw response:', content)
       throw new Error('Failed to parse meal plan data')
     }
   } catch (error) {
@@ -124,7 +126,7 @@ export async function generateMealsByCategory(category: string, count: number = 
           - Health score (1-10)
           - Detailed macros (calories, protein, carbs, fat)
           
-          Format each meal as a JSON object with the following structure:
+          Your response must be a valid JSON string with this exact structure:
           {
             "meals": [
               {
@@ -157,17 +159,18 @@ export async function generateMealsByCategory(category: string, count: number = 
           }
           
           Return exactly ${count} meal objects in the meals array.
-          Provide realistic cost estimates for ingredients based on typical supermarket prices in ${currency}.`
+          Provide realistic cost estimates for ingredients based on typical supermarket prices in ${currency}.
+          
+          Important: Your entire response must be a valid JSON string that can be parsed with JSON.parse().`
         },
         {
           role: "user",
           content: `Generate ${count} ${category} recipes with detailed nutritional information and cost estimates.`
         }
       ],
-      model: "gpt-4",  // We'll update this based on available models
+      model: "gpt-4",
       temperature: 0.7,
-      max_tokens: 2000,
-      response_format: { type: "json_object" }
+      max_tokens: 2000
     })
 
     const content = completion.choices[0].message.content
@@ -186,6 +189,7 @@ export async function generateMealsByCategory(category: string, count: number = 
       }))
     } catch (error) {
       console.error('Error parsing OpenAI response:', error)
+      console.error('Raw response:', content)
       throw new Error('Failed to parse meal data')
     }
   } catch (error) {

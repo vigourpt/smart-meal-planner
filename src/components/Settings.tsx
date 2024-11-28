@@ -28,8 +28,13 @@ export function Settings() {
     updateWeeklyBudget: state.updateWeeklyBudget
   }))
 
-  const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setApiKey(e.target.value)
+  const handleApiKeySubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    const newApiKey = formData.get('apiKey') as string
+    if (newApiKey) {
+      setApiKey(newApiKey)
+    }
   }
 
   const handleCurrencyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -53,15 +58,15 @@ export function Settings() {
           </div>
 
           <div className="space-y-6">
-            <div>
+            <form onSubmit={handleApiKeySubmit}>
               <label className="block text-sm font-medium text-gray-700">
                 OpenAI API Key
               </label>
               <div className="mt-1">
                 <input
                   type="password"
-                  value={apiKey || ''}
-                  onChange={handleApiKeyChange}
+                  name="apiKey"
+                  defaultValue={apiKey || ''}
                   placeholder="sk-..."
                   className="shadow-sm focus:ring-emerald-500 focus:border-emerald-500 block w-full sm:text-sm border-gray-300 rounded-md"
                 />
@@ -69,7 +74,15 @@ export function Settings() {
                   Your API key is stored locally and never shared.
                 </p>
               </div>
-            </div>
+              <div className="mt-3">
+                <button
+                  type="submit"
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+                >
+                  Save API Key
+                </button>
+              </div>
+            </form>
 
             <div>
               <label className="block text-sm font-medium text-gray-700">
