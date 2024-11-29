@@ -34,8 +34,8 @@ interface MealDetailsState {
 }
 
 interface MealPlanItem {
-  recipe: GeneratedMeal
-  servings: number
+  recipe: GeneratedMeal | null
+  servings?: number
 }
 
 interface MealPlanAccumulator {
@@ -104,6 +104,7 @@ export default function MealPlanner() {
         Allergies: ${preferences.allergies.join(', ')}
         Cuisine types: ${preferences.cuisineTypes.join(', ')}
         Servings: ${preferences.servings}
+        Weekly Budget: ${preferences.weeklyBudget}
       `
 
       const result = await generateFullMealPlan(preferencesString)
@@ -120,8 +121,14 @@ export default function MealPlanner() {
           return acc
         }, {})
       }
-      updateMealPlan(newMealPlan)
-      generateShoppingListFromMealPlan(newMealPlan)
+
+      try {
+        updateMealPlan(newMealPlan)
+        generateShoppingListFromMealPlan(newMealPlan)
+      } catch (budgetError) {
+        setError(budgetError instanceof Error ? budgetError.message : 'Meal plan exceeds weekly budget')
+        return
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to generate meal plan')
     } finally {
@@ -144,13 +151,19 @@ export default function MealPlanner() {
         Allergies: ${preferences.allergies.join(', ')}
         Cuisine types: ${preferences.cuisineTypes.join(', ')}
         Servings: ${preferences.servings}
+        Weekly Budget: ${preferences.weeklyBudget}
       `
 
       const meals = await generateMealsByCategory(mealType.toLowerCase(), 1)
       if (meals.length > 0) {
-        updateMealInPlan(day, mealType, meals[0], preferences.servings)
-        if (mealPlan) {
-          generateShoppingListFromMealPlan(mealPlan)
+        try {
+          updateMealInPlan(day, mealType, meals[0], preferences.servings)
+          if (mealPlan) {
+            generateShoppingListFromMealPlan(mealPlan)
+          }
+        } catch (budgetError) {
+          setError(budgetError instanceof Error ? budgetError.message : 'Meal exceeds weekly budget')
+          return
         }
       }
     } catch (err) {
@@ -163,7 +176,7 @@ export default function MealPlanner() {
   const getWeekDates = () => {
     const start = new Date(currentWeek)
     start.setDate(start.getDate() - start.getDay() + 1) // Start from Monday
-    return DAYS.map((_, i) => {
+    return DAYS.map((_: any, i: number) => {
       const date = new Date(start)
       date.setDate(start.getDate() + i)
       return date
@@ -202,9 +215,13 @@ export default function MealPlanner() {
   }
 
   const handleServingsChange = (day: string, mealType: string, servings: number) => {
-    updateMealServings(day, mealType, servings)
-    if (mealPlan) {
-      generateShoppingListFromMealPlan(mealPlan)
+    try {
+      updateMealServings(day, mealType, servings)
+      if (mealPlan) {
+        generateShoppingListFromMealPlan(mealPlan)
+      }
+    } catch (budgetError) {
+      setError(budgetError instanceof Error ? budgetError.message : 'Serving change would exceed weekly budget')
     }
   }
 
@@ -269,20 +286,42 @@ export default function MealPlanner() {
   const handleEmail = () => {
     if (!mealPlan) return
 
-    let emailBody = `Weekly Meal Plan - ${formatWeekRange()}%0D%0A%0D%0A`
+    const formatMeal = (meal: MealPlanItem) => {
+      if (!meal?.recipe) return ''
+      return `${meal.recipe.name} (${meal.recipe.macros.calories} kcal, ${formatCurrency(meal.recipe.totalCost, currency)})\n` +
+        `Servings: ${meal.servings || preferences.servings}\n` +
+        `\nIngredients:\n${meal.recipe.ingredients.map(ing => `- ${ing.amount} ${ing.name}`).join('\n')}\n` +
+        `\nInstructions:\n${meal.recipe.recipe}\n\n`
+    }
+
+    let emailSubject = `Weekly Meal Plan - ${formatWeekRange()}`
+    let emailBody = `Weekly Meal Plan - ${formatWeekRange()}\n\n`
 
     DAYS.forEach(day => {
-      emailBody += `${day}:%0D%0A`
+      emailBody += `${day}:\n`
       MEAL_TYPES.forEach(mealType => {
         const meal = mealPlan.meals[`${day}-${mealType}`]
         if (meal?.recipe) {
-          emailBody += `${mealType}: ${meal.recipe.name} (${meal.recipe.macros.calories} kcal, ${formatCurrency(meal.recipe.totalCost, currency)})%0D%0A`
+          emailBody += `\n${mealType}:\n${formatMeal(meal)}`
         }
       })
-      emailBody += '%0D%0A'
+      emailBody += '\n'
     })
 
-    window.location.href = `mailto:?subject=Weekly Meal Plan - ${formatWeekRange()}&body=${emailBody}`
+    // Calculate total cost
+    const totalCost = Object.values(mealPlan.meals).reduce((total, meal) => {
+      if (!meal?.recipe) return total
+      return total + meal.recipe.totalCost
+    }, 0)
+
+    emailBody += `\nTotal Weekly Cost: ${formatCurrency(totalCost, currency)}`
+
+    // Encode the subject and body for the mailto link
+    const encodedSubject = encodeURIComponent(emailSubject)
+    const encodedBody = encodeURIComponent(emailBody)
+
+    // Open the default email client with the meal plan
+    window.location.href = `mailto:?subject=${encodedSubject}&body=${encodedBody}`
   }
 
   if (!apiKey) {
