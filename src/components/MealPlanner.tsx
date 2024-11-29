@@ -168,6 +168,8 @@ export default function MealPlanner() {
     const newDate = new Date(currentWeek)
     newDate.setDate(newDate.getDate() + (direction === 'next' ? 7 : -7))
     setCurrentWeek(newDate)
+    // Clear the meal plan when changing weeks
+    updateMealPlan({ meals: {} })
   }
 
   const handleOpenRecipeSelector = (day: string, mealType: string) => {
@@ -275,6 +277,8 @@ export default function MealPlanner() {
     return <ApiKeyModal />
   }
 
+  const isEmpty = !mealPlan || Object.keys(mealPlan.meals).length === 0
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -294,20 +298,38 @@ export default function MealPlanner() {
             <ChevronRight className="h-5 w-5" />
           </button>
           <div className="flex gap-2 ml-4">
-            <button
-              onClick={handlePrint}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              <Printer className="h-4 w-4 mr-2" />
-              Print
-            </button>
-            <button
-              onClick={handleEmail}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            >
-              <Mail className="h-4 w-4 mr-2" />
-              Email
-            </button>
+            {!isEmpty && (
+              <>
+                <button
+                  onClick={handlePrint}
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  <Printer className="h-4 w-4 mr-2" />
+                  Print
+                </button>
+                <button
+                  onClick={handleEmail}
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  <Mail className="h-4 w-4 mr-2" />
+                  Email
+                </button>
+              </>
+            )}
+            {isEmpty && (
+              <button
+                onClick={handleGenerateMealPlan}
+                disabled={isGenerating}
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50"
+              >
+                {isGenerating ? (
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Plus className="h-4 w-4 mr-2" />
+                )}
+                Generate Plan
+              </button>
+            )}
           </div>
         </div>
       </div>
