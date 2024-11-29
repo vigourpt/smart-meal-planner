@@ -1,14 +1,32 @@
 import React, { useEffect, useState } from 'react'
 import { getAllMeals, getMealsByCategory, type GeneratedMeal } from '../lib/firebase'
-import { Clock, TrendingUp, DollarSign, Users } from 'lucide-react'
+import { Clock, TrendingUp, DollarSign, Users, Search, Tag } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { formatCurrency } from '../lib/currency'
 
 const CATEGORIES = ['breakfast', 'lunch', 'dinner', 'snack'] as const
+const MEAL_TAGS = [
+  'Quick & Easy',
+  'High Protein',
+  'Low Carb',
+  'Vegetarian',
+  'Vegan',
+  'Gluten Free',
+  'Dairy Free',
+  'Budget Friendly',
+  'Meal Prep',
+  'Family Friendly',
+  'Spicy',
+  'Comfort Food'
+] as const
+
+type MealTag = typeof MEAL_TAGS[number]
 
 export function SavedMeals() {
   const [meals, setMeals] = useState<GeneratedMeal[]>([])
   const [selectedCategory, setSelectedCategory] = useState<typeof CATEGORIES[number] | 'all'>('all')
+  const [selectedTags, setSelectedTags] = useState<MealTag[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [servingSizes, setServingSizes] = useState<Record<string, number>>({})
   
@@ -68,10 +86,62 @@ export function SavedMeals() {
     }
   }
 
+  const toggleTag = (tag: MealTag) => {
+    setSelectedTags(prev => 
+      prev.includes(tag)
+        ? prev.filter(t => t !== tag)
+        : [...prev, tag]
+    )
+  }
+
+  const filteredMeals = meals.filter(meal => {
+    const matchesSearch = searchQuery === '' || 
+      meal.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      meal.ingredients.some(ing => ing.name.toLowerCase().includes(searchQuery.toLowerCase()))
+
+    const matchesTags = selectedTags.length === 0 || 
+      selectedTags.every(tag => {
+        switch (tag) {
+          case 'Quick & Easy':
+            return meal.prepTime <= 20
+          case 'High Protein':
+            return meal.macros.protein >= 25
+          case 'Low Carb':
+            return meal.macros.carbs <= 20
+          case 'Budget Friendly':
+            return meal.totalCost <= 10
+          case 'Meal Prep':
+            return meal.prepTime <= 45 && meal.ingredients.length <= 10
+          default:
+            // For other tags, check if they're mentioned in the recipe or name
+            return meal.recipe.toLowerCase().includes(tag.toLowerCase()) ||
+                   meal.name.toLowerCase().includes(tag.toLowerCase())
+        }
+      })
+
+    return matchesSearch && matchesTags
+  })
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col space-y-4">
         <h2 className="text-2xl font-bold">Saved Meals</h2>
+
+        {/* Search Bar */}
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search className="h-5 w-5 text-gray-400" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search meals by name or ingredients..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
+          />
+        </div>
+
+        {/* Categories */}
         <div className="flex space-x-2">
           <button
             onClick={() => setSelectedCategory('all')}
@@ -97,6 +167,24 @@ export function SavedMeals() {
             </button>
           ))}
         </div>
+
+        {/* Tags */}
+        <div className="flex flex-wrap gap-2">
+          {MEAL_TAGS.map(tag => (
+            <button
+              key={tag}
+              onClick={() => toggleTag(tag)}
+              className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                selectedTags.includes(tag)
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              <Tag className="h-3 w-3 mr-1" />
+              {tag}
+            </button>
+          ))}
+        </div>
       </div>
 
       {loading ? (
@@ -104,13 +192,13 @@ export function SavedMeals() {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto"></div>
           <p className="mt-4 text-gray-500">Loading meals...</p>
         </div>
-      ) : meals.length === 0 ? (
+      ) : filteredMeals.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-gray-500">No meals found in this category.</p>
+          <p className="text-gray-500">No meals found matching your criteria.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {meals.map((meal) => {
+          {filteredMeals.map((meal) => {
             const adjustedValues = getAdjustedValues(meal)
             return (
               <div key={meal.id} className="bg-white rounded-lg shadow-md overflow-hidden">
