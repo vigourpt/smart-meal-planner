@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import { getAllMeals, getMealsByCategory, type GeneratedMeal } from '../lib/firebase'
-import { Clock, TrendingUp, DollarSign, Users, Search, Tag } from 'lucide-react'
+import { Clock, TrendingUp, DollarSign, Users, Search, Tag, Plus, X } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { formatCurrency } from '../lib/currency'
 
 const CATEGORIES = ['breakfast', 'lunch', 'dinner', 'snack'] as const
-const MEAL_TAGS = [
+const DEFAULT_TAGS = [
   'Quick & Easy',
   'High Protein',
   'Low Carb',
@@ -20,12 +20,14 @@ const MEAL_TAGS = [
   'Comfort Food'
 ] as const
 
-type MealTag = typeof MEAL_TAGS[number]
+type DefaultTag = typeof DEFAULT_TAGS[number]
 
 export function SavedMeals() {
   const [meals, setMeals] = useState<GeneratedMeal[]>([])
   const [selectedCategory, setSelectedCategory] = useState<typeof CATEGORIES[number] | 'all'>('all')
-  const [selectedTags, setSelectedTags] = useState<MealTag[]>([])
+  const [selectedTags, setSelectedTags] = useState<(DefaultTag | string)[]>([])
+  const [customTags, setCustomTags] = useState<string[]>([])
+  const [newTag, setNewTag] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [servingSizes, setServingSizes] = useState<Record<string, number>>({})
@@ -86,12 +88,25 @@ export function SavedMeals() {
     }
   }
 
-  const toggleTag = (tag: MealTag) => {
+  const toggleTag = (tag: DefaultTag | string) => {
     setSelectedTags(prev => 
       prev.includes(tag)
         ? prev.filter(t => t !== tag)
         : [...prev, tag]
     )
+  }
+
+  const handleAddCustomTag = () => {
+    if (newTag.trim() && !customTags.includes(newTag.trim())) {
+      setCustomTags(prev => [...prev, newTag.trim()])
+      setSelectedTags(prev => [...prev, newTag.trim()])
+      setNewTag('')
+    }
+  }
+
+  const handleRemoveCustomTag = (tag: string) => {
+    setCustomTags(prev => prev.filter(t => t !== tag))
+    setSelectedTags(prev => prev.filter(t => t !== tag))
   }
 
   const filteredMeals = meals.filter(meal => {
@@ -101,21 +116,28 @@ export function SavedMeals() {
 
     const matchesTags = selectedTags.length === 0 || 
       selectedTags.every(tag => {
-        switch (tag) {
-          case 'Quick & Easy':
-            return meal.prepTime <= 20
-          case 'High Protein':
-            return meal.macros.protein >= 25
-          case 'Low Carb':
-            return meal.macros.carbs <= 20
-          case 'Budget Friendly':
-            return meal.totalCost <= 10
-          case 'Meal Prep':
-            return meal.prepTime <= 45 && meal.ingredients.length <= 10
-          default:
-            // For other tags, check if they're mentioned in the recipe or name
-            return meal.recipe.toLowerCase().includes(tag.toLowerCase()) ||
-                   meal.name.toLowerCase().includes(tag.toLowerCase())
+        if (DEFAULT_TAGS.includes(tag as DefaultTag)) {
+          switch (tag) {
+            case 'Quick & Easy':
+              return meal.prepTime <= 20
+            case 'High Protein':
+              return meal.macros.protein >= 25
+            case 'Low Carb':
+              return meal.macros.carbs <= 20
+            case 'Budget Friendly':
+              return meal.totalCost <= 10
+            case 'Meal Prep':
+              return meal.prepTime <= 45 && meal.ingredients.length <= 10
+            default:
+              // For other default tags, check if they're mentioned in the recipe or name
+              return meal.recipe.toLowerCase().includes(tag.toLowerCase()) ||
+                     meal.name.toLowerCase().includes(tag.toLowerCase())
+          }
+        } else {
+          // For custom tags, check if they're mentioned in the recipe, name, or ingredients
+          return meal.recipe.toLowerCase().includes(tag.toLowerCase()) ||
+                 meal.name.toLowerCase().includes(tag.toLowerCase()) ||
+                 meal.ingredients.some(ing => ing.name.toLowerCase().includes(tag.toLowerCase()))
         }
       })
 
@@ -169,21 +191,71 @@ export function SavedMeals() {
         </div>
 
         {/* Tags */}
-        <div className="flex flex-wrap gap-2">
-          {MEAL_TAGS.map(tag => (
-            <button
-              key={tag}
-              onClick={() => toggleTag(tag)}
-              className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                selectedTags.includes(tag)
-                  ? 'bg-emerald-100 text-emerald-800'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              <Tag className="h-3 w-3 mr-1" />
-              {tag}
-            </button>
-          ))}
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-2">
+            {DEFAULT_TAGS.map(tag => (
+              <button
+                key={tag}
+                onClick={() => toggleTag(tag)}
+                className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                  selectedTags.includes(tag)
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                <Tag className="h-3 w-3 mr-1" />
+                {tag}
+              </button>
+            ))}
+            {customTags.map(tag => (
+              <div
+                key={tag}
+                className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                  selectedTags.includes(tag)
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : 'bg-gray-100 text-gray-600'
+                }`}
+              >
+                <button
+                  onClick={() => toggleTag(tag)}
+                  className="flex items-center"
+                >
+                  <Tag className="h-3 w-3 mr-1" />
+                  {tag}
+                </button>
+                <button
+                  onClick={() => handleRemoveCustomTag(tag)}
+                  className="ml-2 hover:text-red-500"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* Add Custom Tag */}
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                placeholder="Add custom tag..."
+                value={newTag}
+                onChange={(e) => setNewTag(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    handleAddCustomTag()
+                  }
+                }}
+                className="block w-full pl-3 pr-10 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 sm:text-sm"
+              />
+              <button
+                onClick={handleAddCustomTag}
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-emerald-500"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
