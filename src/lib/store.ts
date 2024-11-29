@@ -178,7 +178,8 @@ export const useStore = create<State>((set) => ({
           calories: adjustForServings(recipe.macros.calories, originalServings, servings),
           protein: adjustForServings(recipe.macros.protein, originalServings, servings),
           carbs: adjustForServings(recipe.macros.carbs, originalServings, servings),
-          fat: adjustForServings(recipe.macros.fat, originalServings, servings)
+          fat: adjustForServings(recipe.macros.fat, originalServings, servings),
+          fiber: adjustForServings(recipe.macros.fiber, originalServings, servings)
         }
       }
 

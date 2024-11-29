@@ -235,7 +235,8 @@ export function SavedMeals() {
         calories: adjustForServings(addToMealPlanModal.meal.macros.calories, defaultServings, servings),
         protein: adjustForServings(addToMealPlanModal.meal.macros.protein, defaultServings, servings),
         carbs: adjustForServings(addToMealPlanModal.meal.macros.carbs, defaultServings, servings),
-        fat: adjustForServings(addToMealPlanModal.meal.macros.fat, defaultServings, servings)
+        fat: adjustForServings(addToMealPlanModal.meal.macros.fat, defaultServings, servings),
+        fiber: adjustForServings(addToMealPlanModal.meal.macros.fiber, defaultServings, servings)
       },
       totalCost: adjustForServings(addToMealPlanModal.meal.totalCost, defaultServings, servings),
       ingredients: addToMealPlanModal.meal.ingredients.map(ing => ({
@@ -261,6 +262,7 @@ export function SavedMeals() {
       protein: adjustForServings(meal.macros.protein, defaultServings, servings),
       carbs: adjustForServings(meal.macros.carbs, defaultServings, servings),
       fat: adjustForServings(meal.macros.fat, defaultServings, servings),
+      fiber: adjustForServings(meal.macros.fiber, defaultServings, servings),
       totalCost: adjustForServings(meal.totalCost, defaultServings, servings),
       ingredients: meal.ingredients.map(ing => ({
         ...ing,
@@ -496,7 +498,7 @@ export function SavedMeals() {
                   <div className="space-y-4">
                     <div>
                       <h4 className="font-medium text-sm text-gray-700 mb-1">Macros:</h4>
-                      <div className="grid grid-cols-4 gap-2 text-sm">
+                      <div className="grid grid-cols-5 gap-2 text-sm">
                         <div className="bg-gray-50 p-2 rounded">
                           <div className="font-medium">{Math.round(adjustedValues.calories)}</div>
                           <div className="text-xs text-gray-500">kcal</div>
@@ -512,6 +514,10 @@ export function SavedMeals() {
                         <div className="bg-gray-50 p-2 rounded">
                           <div className="font-medium">{Math.round(adjustedValues.fat)}g</div>
                           <div className="text-xs text-gray-500">fat</div>
+                        </div>
+                        <div className="bg-gray-50 p-2 rounded">
+                          <div className="font-medium">{Math.round(adjustedValues.fiber)}g</div>
+                          <div className="text-xs text-gray-500">fiber</div>
                         </div>
                       </div>
                     </div>

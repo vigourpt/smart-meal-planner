@@ -21,6 +21,7 @@ export interface Macros {
   protein: number
   carbs: number
   fat: number
+  fiber: number
 }
 
 export interface Ingredient {
