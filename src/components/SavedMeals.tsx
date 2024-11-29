@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { getAllMeals, getMealsByCategory, type GeneratedMeal } from '../lib/firebase'
-import { Clock, TrendingUp, DollarSign, Users, Search, Tag, Plus, X, Calendar } from 'lucide-react'
+import { Clock, TrendingUp, DollarSign, Users, Search, Tag, Plus, X, Calendar, Shield, Timer } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { formatCurrency } from '../lib/currency'
 
@@ -29,6 +29,74 @@ interface AddToMealPlanModalProps {
   isOpen: boolean
   onClose: () => void
   onAdd: (day: string, mealType: string) => void
+}
+
+function DietInfo({ meal }: { meal: GeneratedMeal }) {
+  const { preferences } = useStore(state => ({
+    preferences: state.preferences
+  }))
+
+  if (!preferences.dietPlan.type || !meal.dietInfo) return null
+
+  return (
+    <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+      {preferences.dietPlan.type === 'slimming_world' && meal.dietInfo.slimmingWorld && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Syns:</span>
+            <span className="text-sm">{meal.dietInfo.slimmingWorld.syns}</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {meal.dietInfo.slimmingWorld.freeFood && (
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                Free Food
+              </span>
+            )}
+            {meal.dietInfo.slimmingWorld.speedFood && (
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                Speed Food
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {preferences.dietPlan.type === 'bulletproof' && meal.dietInfo.bulletproof && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Shield className={`h-4 w-4 ${meal.dietInfo.bulletproof.approved ? 'text-green-500' : 'text-gray-400'}`} />
+            <span className="text-sm">Bulletproof Approved</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {meal.dietInfo.bulletproof.mct && (
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                MCT Oil
+              </span>
+            )}
+            {meal.dietInfo.bulletproof.grassFed && (
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                Grass-Fed
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {preferences.dietPlan.type === 'intermittent_fasting' && meal.dietInfo.intermittentFasting && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Timer className={`h-4 w-4 ${meal.dietInfo.intermittentFasting.breaksFast ? 'text-red-500' : 'text-green-500'}`} />
+            <span className="text-sm">
+              {meal.dietInfo.intermittentFasting.breaksFast ? 'Breaks Fast' : 'Fast-Safe'}
+            </span>
+          </div>
+          <div className="text-sm">
+            Calories: {meal.dietInfo.intermittentFasting.calories}
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 function AddToMealPlanModal({ isOpen, onClose, onAdd }: AddToMealPlanModalProps) {
@@ -232,31 +300,7 @@ export function SavedMeals() {
       meal.ingredients.some(ing => ing.name.toLowerCase().includes(searchQuery.toLowerCase()))
 
     const matchesTags = selectedTags.length === 0 || 
-      selectedTags.every(tag => {
-        if (DEFAULT_TAGS.includes(tag as DefaultTag)) {
-          switch (tag) {
-            case 'Quick & Easy':
-              return meal.prepTime <= 20
-            case 'High Protein':
-              return meal.macros.protein >= 25
-            case 'Low Carb':
-              return meal.macros.carbs <= 20
-            case 'Budget Friendly':
-              return meal.totalCost <= 10
-            case 'Meal Prep':
-              return meal.prepTime <= 45 && meal.ingredients.length <= 10
-            default:
-              // For other default tags, check if they're mentioned in the recipe or name
-              return meal.recipe.toLowerCase().includes(tag.toLowerCase()) ||
-                     meal.name.toLowerCase().includes(tag.toLowerCase())
-          }
-        } else {
-          // For custom tags, check if they're mentioned in the recipe, name, or ingredients
-          return meal.recipe.toLowerCase().includes(tag.toLowerCase()) ||
-                 meal.name.toLowerCase().includes(tag.toLowerCase()) ||
-                 meal.ingredients.some(ing => ing.name.toLowerCase().includes(tag.toLowerCase()))
-        }
-      })
+      selectedTags.every(tag => meal.tags?.includes(tag))
 
     return matchesSearch && matchesTags
   })
@@ -417,6 +461,24 @@ export function SavedMeals() {
                       {formatCurrency(adjustedValues.totalCost, currency)}
                     </div>
                   </div>
+
+                  {/* Diet-specific information */}
+                  <DietInfo meal={meal} />
+
+                  {/* Display meal tags */}
+                  {meal.tags && meal.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {meal.tags.map((tag, index) => (
+                        <span
+                          key={index}
+                          className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600"
+                        >
+                          <Tag className="h-3 w-3 mr-1" />
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
 
                   <div className="flex items-center mb-4 space-x-2">
                     <Users className="h-4 w-4 text-gray-500" />

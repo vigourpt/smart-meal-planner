@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useStore } from '../lib/store'
-import { Plus, X } from 'lucide-react'
+import { Plus, X, Clock } from 'lucide-react'
+import type { DietPlan } from '../lib/store'
 
 const COMMON_DIETARY_RESTRICTIONS = [
   'Vegetarian',
@@ -39,10 +40,29 @@ const COMMON_HEALTH_GOALS = [
   'Gut health'
 ]
 
+const DIET_PLANS = [
+  {
+    id: 'bulletproof',
+    name: 'Bulletproof Diet',
+    description: 'High-fat, low-carb diet focusing on clean, high-quality foods'
+  },
+  {
+    id: 'intermittent_fasting',
+    name: 'Intermittent Fasting',
+    description: 'Time-restricted eating pattern to improve metabolic health'
+  },
+  {
+    id: 'slimming_world',
+    name: 'Slimming World',
+    description: 'Food optimization plan with Free Foods and Syns'
+  }
+] as const
+
 export function Profile() {
-  const { preferences, updatePreferences } = useStore(state => ({
+  const { preferences, updatePreferences, updateDietPlan } = useStore(state => ({
     preferences: state.preferences,
-    updatePreferences: state.updatePreferences
+    updatePreferences: state.updatePreferences,
+    updateDietPlan: state.updateDietPlan
   }))
 
   const [newDietary, setNewDietary] = useState('')
@@ -107,9 +127,153 @@ export function Profile() {
     }
   }
 
+  const handleDietPlanChange = (planType: DietPlan['type']) => {
+    if (!planType) {
+      updateDietPlan({ type: null, settings: {} })
+      return
+    }
+
+    const defaultSettings: Record<string, any> = {
+      bulletproof: {
+        bulletproofWindow: {
+          start: '06:00',
+          end: '10:00'
+        }
+      },
+      intermittent_fasting: {
+        fastingWindow: {
+          start: '20:00',
+          end: '12:00'
+        }
+      },
+      slimming_world: {
+        weeklySyms: 15
+      }
+    }
+
+    updateDietPlan({
+      type: planType,
+      settings: defaultSettings[planType] || {}
+    })
+  }
+
+  const handleDietPlanSettingChange = (setting: string, value: any) => {
+    if (!preferences.dietPlan.type) return
+
+    updateDietPlan({
+      ...preferences.dietPlan,
+      settings: {
+        ...preferences.dietPlan.settings,
+        [setting]: value
+      }
+    })
+  }
+
   return (
     <div className="max-w-3xl mx-auto space-y-8">
       <h2 className="text-2xl font-bold">Profile</h2>
+
+      {/* Diet Plan Selection */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-medium">Diet Plan</h3>
+        <div className="space-y-4">
+          <select
+            value={preferences.dietPlan.type || ''}
+            onChange={(e) => handleDietPlanChange(e.target.value as DietPlan['type'])}
+            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+          >
+            <option value="">No specific diet plan</option>
+            {DIET_PLANS.map(plan => (
+              <option key={plan.id} value={plan.id}>{plan.name}</option>
+            ))}
+          </select>
+
+          {preferences.dietPlan.type && (
+            <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+              {preferences.dietPlan.type === 'bulletproof' && (
+                <div className="space-y-4">
+                  <h4 className="font-medium">Bulletproof Window</h4>
+                  <div className="flex items-center space-x-4">
+                    <div>
+                      <label className="block text-sm text-gray-700">Start Time</label>
+                      <input
+                        type="time"
+                        value={preferences.dietPlan.settings.bulletproofWindow?.start || '06:00'}
+                        onChange={(e) => handleDietPlanSettingChange('bulletproofWindow', {
+                          ...preferences.dietPlan.settings.bulletproofWindow,
+                          start: e.target.value
+                        })}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-700">End Time</label>
+                      <input
+                        type="time"
+                        value={preferences.dietPlan.settings.bulletproofWindow?.end || '10:00'}
+                        onChange={(e) => handleDietPlanSettingChange('bulletproofWindow', {
+                          ...preferences.dietPlan.settings.bulletproofWindow,
+                          end: e.target.value
+                        })}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {preferences.dietPlan.type === 'intermittent_fasting' && (
+                <div className="space-y-4">
+                  <h4 className="font-medium">Fasting Window</h4>
+                  <div className="flex items-center space-x-4">
+                    <div>
+                      <label className="block text-sm text-gray-700">Start Time</label>
+                      <input
+                        type="time"
+                        value={preferences.dietPlan.settings.fastingWindow?.start || '20:00'}
+                        onChange={(e) => handleDietPlanSettingChange('fastingWindow', {
+                          ...preferences.dietPlan.settings.fastingWindow,
+                          start: e.target.value
+                        })}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-700">End Time</label>
+                      <input
+                        type="time"
+                        value={preferences.dietPlan.settings.fastingWindow?.end || '12:00'}
+                        onChange={(e) => handleDietPlanSettingChange('fastingWindow', {
+                          ...preferences.dietPlan.settings.fastingWindow,
+                          end: e.target.value
+                        })}
+                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {preferences.dietPlan.type === 'slimming_world' && (
+                <div className="space-y-4">
+                  <h4 className="font-medium">Slimming World Settings</h4>
+                  <div>
+                    <label className="block text-sm text-gray-700">Weekly Syns Allowance</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="30"
+                      value={preferences.dietPlan.settings.weeklySyms || 15}
+                      onChange={(e) => handleDietPlanSettingChange('weeklySyms', parseInt(e.target.value))}
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Dietary Restrictions */}
       <div className="space-y-4">

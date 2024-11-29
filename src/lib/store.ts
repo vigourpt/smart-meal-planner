@@ -1,12 +1,31 @@
 import { create } from 'zustand'
 import type { GeneratedMeal, Ingredient } from './firebase'
 
+export interface DietPlan {
+  type: 'bulletproof' | 'intermittent_fasting' | 'slimming_world' | null
+  settings: {
+    // Bulletproof settings
+    bulletproofWindow?: {
+      start: string // HH:mm format
+      end: string
+    }
+    // Intermittent fasting settings
+    fastingWindow?: {
+      start: string // HH:mm format
+      end: string
+    }
+    // Slimming World settings
+    weeklySyms?: number
+  }
+}
+
 interface UserPreferences {
   dietary: string[]
   allergies: string[]
   cuisineTypes: string[]
   servings: number
   weeklyBudget: number
+  dietPlan: DietPlan
 }
 
 interface MealPlanItem {
@@ -51,6 +70,7 @@ interface State {
   updatePreferences: (preferences: Partial<UserPreferences>) => void
   addSavedMeal: (meal: GeneratedMeal) => void
   updateWeeklyBudget: (amount: number) => void
+  updateDietPlan: (plan: DietPlan) => void
 }
 
 function adjustForServings(value: number, originalServings: number, newServings: number): number {
@@ -106,7 +126,11 @@ export const useStore = create<State>((set) => ({
     allergies: [],
     cuisineTypes: [],
     servings: 4,
-    weeklyBudget: 150
+    weeklyBudget: 150,
+    dietPlan: {
+      type: null,
+      settings: {}
+    }
   },
   shoppingList: [],
   savedMeals: {
@@ -238,6 +262,13 @@ export const useStore = create<State>((set) => ({
       preferences: {
         ...state.preferences,
         weeklyBudget: amount
+      }
+    })),
+  updateDietPlan: (plan: DietPlan) =>
+    set((state) => ({
+      preferences: {
+        ...state.preferences,
+        dietPlan: plan
       }
     }))
 }))
