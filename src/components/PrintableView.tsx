@@ -35,10 +35,48 @@ export function PrintableView({ type, data, currency, weekRange }: PrintableView
   if (type === 'mealplan' && 'meals' in data) {
     return (
       <div className="p-8 max-w-4xl mx-auto">
+        <style>
+          {`
+            @media print {
+              @page {
+                margin: 2cm;
+                size: portrait;
+              }
+              
+              .page-break-after {
+                page-break-after: always;
+                break-after: page;
+              }
+              
+              .recipe {
+                page-break-inside: avoid;
+                break-inside: avoid;
+                page-break-after: always;
+                break-after: page;
+              }
+
+              table {
+                page-break-inside: avoid;
+                break-inside: avoid;
+              }
+
+              h1, h2, h3, h4 {
+                page-break-after: avoid;
+                break-after: avoid;
+              }
+
+              ul, li {
+                page-break-inside: avoid;
+                break-inside: avoid;
+              }
+            }
+          `}
+        </style>
+
         <h1 className="text-3xl font-bold text-center mb-6">Weekly Meal Plan</h1>
         {weekRange && <p className="text-center mb-8">{weekRange}</p>}
         
-        <div className="border rounded-lg overflow-hidden">
+        <div className="border rounded-lg overflow-hidden page-break-after">
           <table className="w-full">
             <thead>
               <tr>
@@ -78,7 +116,7 @@ export function PrintableView({ type, data, currency, weekRange }: PrintableView
           {Object.values(data.meals).map((meal, index) => {
             if (!meal?.recipe) return null
             return (
-              <div key={index} className="mb-6 pb-6 border-b">
+              <div key={index} className="mb-6 pb-6 border-b recipe">
                 <h3 className="text-xl font-bold mb-2">{meal.recipe.name}</h3>
                 <p className="mb-2">Servings: {meal.servings || 4}</p>
                 <div className="mb-4">
