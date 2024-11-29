@@ -1,7 +1,9 @@
-import React from 'react'
+import React, { useRef } from 'react'
 import { useStore } from '../lib/store'
 import { formatCurrency } from '../lib/currency'
-import { RefreshCw, DollarSign, Check } from 'lucide-react'
+import { RefreshCw, DollarSign, Check, Printer, Mail } from 'lucide-react'
+import { PrintableView } from './PrintableView'
+import ReactDOMServer from 'react-dom/server'
 
 export function ShoppingList() {
   const {
@@ -17,6 +19,8 @@ export function ShoppingList() {
     resetShoppingListSpending: state.resetShoppingListSpending,
     weeklyBudget: state.preferences.weeklyBudget
   }))
+
+  const printFrameRef = useRef<HTMLIFrameElement>(null)
 
   const estimatedTotal = shoppingList.reduce((total, item) => total + item.ingredient.estimatedCost, 0)
   const remainingTotal = shoppingList
@@ -41,6 +45,51 @@ export function ShoppingList() {
     updateShoppingList(updatedList)
   }
 
+  const handlePrint = () => {
+    const printContent = ReactDOMServer.renderToString(
+      <html>
+        <head>
+          <title>Shopping List</title>
+          <style>
+            {`
+              body { font-family: system-ui, -apple-system, sans-serif; }
+              @media print {
+                @page { margin: 2cm; }
+              }
+            `}
+          </style>
+        </head>
+        <body>
+          <PrintableView
+            type="shoppinglist"
+            data={shoppingList}
+            currency={currency}
+          />
+        </body>
+      </html>
+    )
+
+    const iframe = printFrameRef.current
+    if (iframe) {
+      const doc = iframe.contentDocument
+      if (doc) {
+        doc.open()
+        doc.write(printContent)
+        doc.close()
+        iframe.contentWindow?.print()
+      }
+    }
+  }
+
+  const handleEmail = () => {
+    const emailBody = shoppingList
+      .map(item => `${item.ingredient.amount} ${item.ingredient.name} - ${formatCurrency(item.ingredient.estimatedCost, currency)}`)
+      .join('%0D%0A') // URL-encoded newline
+      + '%0D%0A%0D%0ATotal: ' + formatCurrency(estimatedTotal, currency)
+
+    window.location.href = `mailto:?subject=Shopping List&body=${emailBody}`
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-start">
@@ -57,13 +106,29 @@ export function ShoppingList() {
             </div>
           </div>
         </div>
-        <button
-          onClick={resetShoppingListSpending}
-          className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-        >
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Reset List
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handlePrint}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            <Printer className="h-4 w-4 mr-2" />
+            Print
+          </button>
+          <button
+            onClick={handleEmail}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            <Mail className="h-4 w-4 mr-2" />
+            Email
+          </button>
+          <button
+            onClick={resetShoppingListSpending}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Reset List
+          </button>
+        </div>
       </div>
 
       <div className="bg-white shadow overflow-hidden sm:rounded-md">
@@ -124,6 +189,13 @@ export function ShoppingList() {
           )}
         </ul>
       </div>
+
+      {/* Hidden iframe for printing */}
+      <iframe
+        ref={printFrameRef}
+        style={{ display: 'none' }}
+        title="Print Frame"
+      />
     </div>
   )
 }

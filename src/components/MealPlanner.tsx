@@ -1,11 +1,13 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { useStore } from '../lib/store'
 import { generateFullMealPlan, generateMealsByCategory } from '../lib/openai'
 import { ApiKeyModal } from './ApiKeyModal'
 import { RecipeSelector } from './RecipeSelector'
-import { ChevronLeft, ChevronRight, Plus, Users, MoreVertical, RefreshCw, List } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus, Users, MoreVertical, RefreshCw, List, Printer, Mail } from 'lucide-react'
 import type { GeneratedMeal } from '../lib/firebase'
 import { formatCurrency } from '../lib/currency'
+import { PrintableView } from './PrintableView'
+import ReactDOMServer from 'react-dom/server'
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack']
@@ -51,6 +53,8 @@ export default function MealPlanner() {
     y: 0
   })
   
+  const printFrameRef = useRef<HTMLIFrameElement>(null)
+
   const {
     mealPlan,
     updateMealPlan,
@@ -209,6 +213,64 @@ export default function MealPlanner() {
     }
   }
 
+  const handlePrint = () => {
+    if (!mealPlan) return
+
+    const printContent = ReactDOMServer.renderToString(
+      <html>
+        <head>
+          <title>Weekly Meal Plan</title>
+          <style>
+            {`
+              body { font-family: system-ui, -apple-system, sans-serif; }
+              @media print {
+                @page { margin: 2cm; }
+              }
+            `}
+          </style>
+        </head>
+        <body>
+          <PrintableView
+            type="mealplan"
+            data={mealPlan}
+            currency={currency}
+            weekRange={formatWeekRange()}
+          />
+        </body>
+      </html>
+    )
+
+    const iframe = printFrameRef.current
+    if (iframe) {
+      const doc = iframe.contentDocument
+      if (doc) {
+        doc.open()
+        doc.write(printContent)
+        doc.close()
+        iframe.contentWindow?.print()
+      }
+    }
+  }
+
+  const handleEmail = () => {
+    if (!mealPlan) return
+
+    let emailBody = `Weekly Meal Plan - ${formatWeekRange()}%0D%0A%0D%0A`
+
+    DAYS.forEach(day => {
+      emailBody += `${day}:%0D%0A`
+      MEAL_TYPES.forEach(mealType => {
+        const meal = mealPlan.meals[`${day}-${mealType}`]
+        if (meal?.recipe) {
+          emailBody += `${mealType}: ${meal.recipe.name} (${meal.recipe.macros.calories} kcal, ${formatCurrency(meal.recipe.totalCost, currency)})%0D%0A`
+        }
+      })
+      emailBody += '%0D%0A'
+    })
+
+    window.location.href = `mailto:?subject=Weekly Meal Plan - ${formatWeekRange()}&body=${emailBody}`
+  }
+
   if (!apiKey) {
     return <ApiKeyModal />
   }
@@ -231,6 +293,22 @@ export default function MealPlanner() {
           >
             <ChevronRight className="h-5 w-5" />
           </button>
+          <div className="flex gap-2 ml-4">
+            <button
+              onClick={handlePrint}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              <Printer className="h-4 w-4 mr-2" />
+              Print
+            </button>
+            <button
+              onClick={handleEmail}
+              className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              <Mail className="h-4 w-4 mr-2" />
+              Email
+            </button>
+          </div>
         </div>
       </div>
 
@@ -362,6 +440,13 @@ export default function MealPlanner() {
           onClick={() => setContextMenu({ isOpen: false, day: '', mealType: '', x: 0, y: 0 })}
         />
       )}
+
+      {/* Hidden iframe for printing */}
+      <iframe
+        ref={printFrameRef}
+        style={{ display: 'none' }}
+        title="Print Frame"
+      />
     </div>
   )
 }

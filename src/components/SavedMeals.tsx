@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react'
 import { getAllMeals, getMealsByCategory, type GeneratedMeal } from '../lib/firebase'
-import { Clock, TrendingUp, DollarSign, Users, Search, Tag, Plus, X } from 'lucide-react'
+import { Clock, TrendingUp, DollarSign, Users, Search, Tag, Plus, X, Calendar } from 'lucide-react'
 import { useStore } from '../lib/store'
 import { formatCurrency } from '../lib/currency'
 
 const CATEGORIES = ['breakfast', 'lunch', 'dinner', 'snack'] as const
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as const
+const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'] as const
+
 const DEFAULT_TAGS = [
   'Quick & Easy',
   'High Protein',
@@ -22,6 +25,73 @@ const DEFAULT_TAGS = [
 
 type DefaultTag = typeof DEFAULT_TAGS[number]
 
+interface AddToMealPlanModalProps {
+  isOpen: boolean
+  onClose: () => void
+  onAdd: (day: string, mealType: string) => void
+}
+
+function AddToMealPlanModal({ isOpen, onClose, onAdd }: AddToMealPlanModalProps) {
+  const [selectedDay, setSelectedDay] = useState<string>(DAYS[0])
+  const [selectedMealType, setSelectedMealType] = useState<string>(MEAL_TYPES[0])
+
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 max-w-md w-full">
+        <h3 className="text-lg font-medium mb-4">Add to Meal Plan</h3>
+        
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Day</label>
+            <select
+              value={selectedDay}
+              onChange={(e) => setSelectedDay(e.target.value)}
+              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+            >
+              {DAYS.map(day => (
+                <option key={day} value={day}>{day}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Meal Type</label>
+            <select
+              value={selectedMealType}
+              onChange={(e) => setSelectedMealType(e.target.value)}
+              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm"
+            >
+              {MEAL_TYPES.map(type => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="mt-6 flex justify-end space-x-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 border border-gray-300 rounded-md"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => {
+              onAdd(selectedDay, selectedMealType)
+              onClose()
+            }}
+            className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-md"
+          >
+            Add to Plan
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function SavedMeals() {
   const [meals, setMeals] = useState<GeneratedMeal[]>([])
   const [selectedCategory, setSelectedCategory] = useState<typeof CATEGORIES[number] | 'all'>('all')
@@ -31,9 +101,27 @@ export function SavedMeals() {
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [servingSizes, setServingSizes] = useState<Record<string, number>>({})
+  const [addToMealPlanModal, setAddToMealPlanModal] = useState<{
+    isOpen: boolean
+    meal: GeneratedMeal | null
+  }>({
+    isOpen: false,
+    meal: null
+  })
   
-  const currency = useStore(state => state.settings.currency)
-  const defaultServings = useStore(state => state.preferences.servings)
+  const {
+    currency,
+    defaultServings,
+    updateMealInPlan,
+    generateShoppingListFromMealPlan,
+    mealPlan
+  } = useStore(state => ({
+    currency: state.settings.currency,
+    defaultServings: state.preferences.servings,
+    updateMealInPlan: state.updateMealInPlan,
+    generateShoppingListFromMealPlan: state.generateShoppingListFromMealPlan,
+    mealPlan: state.mealPlan
+  }))
 
   useEffect(() => {
     const fetchMeals = async () => {
@@ -67,6 +155,35 @@ export function SavedMeals() {
       ...prev,
       [mealId]: servings
     }))
+  }
+
+  const handleAddToMealPlan = (day: string, mealType: string) => {
+    if (!addToMealPlanModal.meal) return
+
+    const servings = servingSizes[addToMealPlanModal.meal.id!] || defaultServings
+    const adjustedMeal = {
+      ...addToMealPlanModal.meal,
+      macros: {
+        calories: adjustForServings(addToMealPlanModal.meal.macros.calories, defaultServings, servings),
+        protein: adjustForServings(addToMealPlanModal.meal.macros.protein, defaultServings, servings),
+        carbs: adjustForServings(addToMealPlanModal.meal.macros.carbs, defaultServings, servings),
+        fat: adjustForServings(addToMealPlanModal.meal.macros.fat, defaultServings, servings)
+      },
+      totalCost: adjustForServings(addToMealPlanModal.meal.totalCost, defaultServings, servings),
+      ingredients: addToMealPlanModal.meal.ingredients.map(ing => ({
+        ...ing,
+        amount: ing.amount.replace(/\d+(\.\d+)?/g, (match) => {
+          const num = parseFloat(match)
+          return adjustForServings(num, defaultServings, servings).toFixed(2)
+        }),
+        estimatedCost: adjustForServings(ing.estimatedCost, defaultServings, servings)
+      }))
+    }
+
+    updateMealInPlan(day, mealType, adjustedMeal, servings)
+    if (mealPlan) {
+      generateShoppingListFromMealPlan(mealPlan)
+    }
   }
 
   const getAdjustedValues = (meal: GeneratedMeal) => {
@@ -275,7 +392,16 @@ export function SavedMeals() {
             return (
               <div key={meal.id} className="bg-white rounded-lg shadow-md overflow-hidden">
                 <div className="p-6">
-                  <h3 className="text-lg font-semibold mb-2">{meal.name}</h3>
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="text-lg font-semibold">{meal.name}</h3>
+                    <button
+                      onClick={() => setAddToMealPlanModal({ isOpen: true, meal })}
+                      className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-full"
+                      title="Add to Meal Plan"
+                    >
+                      <Calendar className="h-5 w-5" />
+                    </button>
+                  </div>
                   
                   <div className="flex items-center space-x-4 text-sm text-gray-500 mb-4">
                     <div className="flex items-center">
@@ -355,6 +481,12 @@ export function SavedMeals() {
           })}
         </div>
       )}
+
+      <AddToMealPlanModal
+        isOpen={addToMealPlanModal.isOpen}
+        onClose={() => setAddToMealPlanModal({ isOpen: false, meal: null })}
+        onAdd={handleAddToMealPlan}
+      />
     </div>
   )
 }
