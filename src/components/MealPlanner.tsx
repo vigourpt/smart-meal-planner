@@ -3,7 +3,8 @@ import { useStore } from '../lib/store'
 import { generateFullMealPlan, generateMealsByCategory } from '../lib/openai'
 import { ApiKeyModal } from './ApiKeyModal'
 import { RecipeSelector } from './RecipeSelector'
-import { ChevronLeft, ChevronRight, Plus, Users, MoreVertical, RefreshCw, List, Printer, Mail } from 'lucide-react'
+import { MealDetailsModal } from './MealDetailsModal'
+import { ChevronLeft, ChevronRight, Plus, Users, MoreVertical, RefreshCw, List, Printer, Mail, Eye } from 'lucide-react'
 import type { GeneratedMeal } from '../lib/firebase'
 import { formatCurrency } from '../lib/currency'
 import { PrintableView } from './PrintableView'
@@ -24,6 +25,12 @@ interface ContextMenuState {
   mealType: string
   x: number
   y: number
+}
+
+interface MealDetailsState {
+  isOpen: boolean
+  meal: GeneratedMeal | null
+  servings: number
 }
 
 interface MealPlanItem {
@@ -51,6 +58,11 @@ export default function MealPlanner() {
     mealType: '',
     x: 0,
     y: 0
+  })
+  const [mealDetails, setMealDetails] = useState<MealDetailsState>({
+    isOpen: false,
+    meal: null,
+    servings: 4
   })
   
   const printFrameRef = useRef<HTMLIFrameElement>(null)
@@ -344,7 +356,7 @@ export default function MealPlanner() {
         <div className="grid grid-cols-8 divide-x divide-gray-200">
           {/* Time slots column */}
           <div className="col-span-1">
-            <div className="h-12"></div> {/* Empty header cell */}
+            <div className="h-12"></div>
             {MEAL_TYPES.map((mealType) => (
               <div key={mealType} className="h-32 p-2 font-medium text-sm text-gray-500">
                 {mealType}
@@ -365,7 +377,14 @@ export default function MealPlanner() {
                   <div key={`${day}-${mealType}`} className="h-32 p-2 border-b border-gray-200">
                     {meal?.recipe ? (
                       <div 
-                        className="relative w-full h-full p-2 bg-emerald-50 rounded-lg flex flex-col"
+                        className="relative w-full h-full p-2 bg-emerald-50 rounded-lg flex flex-col cursor-pointer hover:bg-emerald-100 transition-colors"
+                        onClick={() => {
+                          setMealDetails({
+                            isOpen: true,
+                            meal: meal.recipe,
+                            servings: meal.servings || preferences.servings
+                          })
+                        }}
                         onContextMenu={(e) => handleContextMenu(e, day, mealType)}
                       >
                         <div className="flex justify-between items-start">
@@ -373,7 +392,10 @@ export default function MealPlanner() {
                             {meal.recipe.name}
                           </p>
                           <button
-                            onClick={(e) => handleContextMenu(e, day, mealType)}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleContextMenu(e, day, mealType)
+                            }}
                             className="p-1 hover:bg-emerald-100 rounded"
                           >
                             <MoreVertical className="h-4 w-4 text-emerald-600" />
@@ -385,9 +407,13 @@ export default function MealPlanner() {
                           <div className="flex items-center space-x-1">
                             <Users className="h-3 w-3" />
                             <select
-                              value={meal.servings}
-                              onChange={(e) => handleServingsChange(day, mealType, parseInt(e.target.value))}
+                              value={meal.servings || preferences.servings}
+                              onChange={(e) => {
+                                e.stopPropagation()
+                                handleServingsChange(day, mealType, parseInt(e.target.value))
+                              }}
                               className="text-xs bg-transparent border-none p-0"
+                              onClick={(e) => e.stopPropagation()}
                             >
                               {[1,2,3,4,5,6,7,8].map(num => (
                                 <option key={num} value={num}>{num}</option>
@@ -427,6 +453,23 @@ export default function MealPlanner() {
           </div>
           <button
             onClick={() => {
+              const meal = mealPlan?.meals[`${contextMenu.day}-${contextMenu.mealType}`]
+              if (meal) {
+                setMealDetails({
+                  isOpen: true,
+                  meal: meal.recipe,
+                  servings: meal.servings || preferences.servings
+                })
+                setContextMenu({ isOpen: false, day: '', mealType: '', x: 0, y: 0 })
+              }
+            }}
+            className="w-full px-3 py-2 text-sm text-left hover:bg-gray-100 flex items-center"
+          >
+            <Eye className="h-4 w-4 mr-2" />
+            View Meal
+          </button>
+          <button
+            onClick={() => {
               handleRegenerateMeal(contextMenu.day, contextMenu.mealType)
               setContextMenu({ isOpen: false, day: '', mealType: '', x: 0, y: 0 })
             }}
@@ -452,6 +495,16 @@ export default function MealPlanner() {
           onSelect={handleSelectRecipe}
           day={recipeSelector.day}
           mealType={recipeSelector.mealType}
+        />
+      )}
+
+      {mealDetails.meal && (
+        <MealDetailsModal
+          isOpen={mealDetails.isOpen}
+          onClose={() => setMealDetails({ isOpen: false, meal: null, servings: 4 })}
+          meal={mealDetails.meal}
+          servings={mealDetails.servings}
+          currency={currency}
         />
       )}
 
