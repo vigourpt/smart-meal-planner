@@ -48,7 +48,60 @@ interface MealPlan {
 }
 
 const MealPlanner = (): JSX.Element => {
-  // Component implementation will be added in the next update
+  const [currentWeek, setCurrentWeek] = useState(new Date())
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [generatingMeal, setGeneratingMeal] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [recipeSelector, setRecipeSelector] = useState<RecipeSelectorState>({
+    isOpen: false,
+    day: 'Monday',
+    mealType: 'Breakfast'
+  })
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>({
+    isOpen: false,
+    day: 'Monday',
+    mealType: 'Breakfast',
+    x: 0,
+    y: 0
+  })
+  const [mealDetails, setMealDetails] = useState<MealDetailsState>({
+    isOpen: false,
+    meal: null,
+    servings: 4
+  })
+  
+  const printFrameRef = useRef<HTMLIFrameElement>(null)
+
+  const {
+    mealPlan,
+    updateMealPlan,
+    updateMealInPlan,
+    updateMealServings,
+    preferences,
+    generateShoppingListFromMealPlan,
+    apiKey,
+    currency,
+    savedMeals
+  } = useStore(state => ({
+    mealPlan: state.mealPlan as MealPlan,
+    updateMealPlan: state.updateMealPlan,
+    updateMealInPlan: state.updateMealInPlan,
+    updateMealServings: state.updateMealServings,
+    preferences: state.preferences,
+    generateShoppingListFromMealPlan: state.generateShoppingListFromMealPlan,
+    apiKey: state.settings.apiKey,
+    currency: state.settings.currency,
+    savedMeals: state.savedMeals
+  }))
+
+  // Function implementations will be added in the next update
+
+  if (!apiKey) {
+    return <ApiKeyModal />
+  }
+
+  const isEmpty = !mealPlan || Object.keys(mealPlan.meals).length === 0
+
   return <div>Loading...</div>
 }
 
