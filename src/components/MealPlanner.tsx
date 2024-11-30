@@ -94,7 +94,51 @@ const MealPlanner = (): JSX.Element => {
     savedMeals: state.savedMeals
   }))
 
-  // Function implementations will be added in the next update
+  const handleGenerateMealPlan = async (): Promise<void> => {
+    if (!apiKey) {
+      setError('Please set your OpenAI API key first')
+      return
+    }
+
+    setIsGenerating(true)
+    setError(null)
+
+    try {
+      const preferencesString = `
+        Dietary restrictions: ${preferences.dietary.join(', ')}
+        Allergies: ${preferences.allergies.join(', ')}
+        Cuisine types: ${preferences.cuisineTypes.join(', ')}
+        Servings: ${preferences.servings}
+      `
+
+      const result = await generateFullMealPlan(preferencesString)
+      const newMealPlan: MealPlan = {
+        meals: result.meals.reduce((acc: Record<string, MealPlanItem>, meal: GeneratedMeal, index: number) => {
+          const day = Math.floor(index / 4)
+          const mealType = index % 4
+          const dayName = DAYS[day]
+          const mealTypeName = MEAL_TYPES[mealType]
+          acc[`${dayName}-${mealTypeName}`] = { 
+            recipe: meal,
+            servings: preferences.servings
+          }
+          return acc
+        }, {})
+      }
+
+      try {
+        updateMealPlan(newMealPlan)
+        generateShoppingListFromMealPlan(newMealPlan)
+      } catch (budgetError) {
+        setError(budgetError instanceof Error ? budgetError.message : 'Meal plan exceeds weekly budget')
+        return
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate meal plan')
+    } finally {
+      setIsGenerating(false)
+    }
+  }
 
   if (!apiKey) {
     return <ApiKeyModal />
@@ -102,7 +146,40 @@ const MealPlanner = (): JSX.Element => {
 
   const isEmpty = !mealPlan || Object.keys(mealPlan.meals).length === 0
 
-  return <div>Loading...</div>
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Meal Plan</h2>
+        <div className="flex items-center space-x-4">
+          <div className="flex gap-2 ml-4">
+            {isEmpty && (
+              <div className="flex flex-col items-end">
+                <button
+                  onClick={handleGenerateMealPlan}
+                  disabled={isGenerating}
+                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 disabled:opacity-50"
+                >
+                  {isGenerating ? (
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Plus className="h-4 w-4 mr-2" />
+                  )}
+                  {isGenerating ? 'Generating...' : 'Generate Plan'}
+                </button>
+                <p className="text-xs text-gray-500 mt-1">This may take a few minutes to complete</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {error && (
+        <div className="p-4 bg-red-100 text-red-700 rounded">
+          {error}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default MealPlanner
