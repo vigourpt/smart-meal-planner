@@ -18,14 +18,14 @@ type MealType = typeof MEAL_TYPES[number]
 
 interface RecipeSelectorState {
   isOpen: boolean
-  day: string
-  mealType: string
+  day: Day
+  mealType: MealType
 }
 
 interface ContextMenuState {
   isOpen: boolean
-  day: string
-  mealType: string
+  day: Day
+  mealType: MealType
   x: number
   y: number
 }
@@ -45,6 +45,12 @@ interface MealPlanAccumulator {
   [key: string]: MealPlanItem
 }
 
+interface MealPlan {
+  meals: {
+    [key: string]: MealPlanItem
+  }
+}
+
 export default function MealPlanner(): JSX.Element {
   const [currentWeek, setCurrentWeek] = useState(new Date())
   const [isGenerating, setIsGenerating] = useState(false)
@@ -52,13 +58,13 @@ export default function MealPlanner(): JSX.Element {
   const [error, setError] = useState<string | null>(null)
   const [recipeSelector, setRecipeSelector] = useState<RecipeSelectorState>({
     isOpen: false,
-    day: '',
-    mealType: ''
+    day: 'Monday',
+    mealType: 'Breakfast'
   })
   const [contextMenu, setContextMenu] = useState<ContextMenuState>({
     isOpen: false,
-    day: '',
-    mealType: '',
+    day: 'Monday',
+    mealType: 'Breakfast',
     x: 0,
     y: 0
   })
@@ -81,7 +87,7 @@ export default function MealPlanner(): JSX.Element {
     currency,
     savedMeals
   } = useStore(state => ({
-    mealPlan: state.mealPlan,
+    mealPlan: state.mealPlan as MealPlan,
     updateMealPlan: state.updateMealPlan,
     updateMealInPlan: state.updateMealInPlan,
     updateMealServings: state.updateMealServings,
