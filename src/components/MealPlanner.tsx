@@ -8,10 +8,13 @@ import { ChevronLeft, ChevronRight, Plus, Users, MoreVertical, RefreshCw, List, 
 import type { GeneratedMeal } from '../lib/firebase'
 import { formatCurrency } from '../lib/currency'
 import { PrintableView } from './PrintableView'
-import ReactDOMServer from 'react-dom/server'
+import * as ReactDOMServer from 'react-dom/server'
 
-const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack']
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as const
+const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'] as const
+
+type Day = typeof DAYS[number]
+type MealType = typeof MEAL_TYPES[number]
 
 interface RecipeSelectorState {
   isOpen: boolean
