@@ -15,8 +15,15 @@ function getClient() {
 
 function cleanJsonResponse(content: string): string {
   try {
+    // First, try to extract JSON if it's wrapped in other text
+    const jsonMatch = content.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) {
+      throw new Error('No JSON object found in response')
+    }
+    let cleaned = jsonMatch[0]
+
     // Remove any markdown code block markers and extra whitespace
-    let cleaned = content
+    cleaned = cleaned
       .replace(/```json\n?/g, '')
       .replace(/```\n?/g, '')
       .replace(/\r\n/g, '\n') // Normalize line endings
@@ -26,13 +33,35 @@ function cleanJsonResponse(content: string): string {
     cleaned = cleaned.replace(/,(\s*[}\]])/g, '$1')
 
     // Try to fix common JSON syntax errors
-    cleaned = cleaned.replace(/,\s*$/m, '') // Remove trailing commas in lines
-    cleaned = cleaned.replace(/([^"{}[\],\s])}/g, '$1"}') // Fix missing quotes before }
-    cleaned = cleaned.replace(/([^"{}[\],\s])\]/g, '$1"]') // Fix missing quotes before ]
+    cleaned = cleaned
+      .replace(/,\s*$/m, '') // Remove trailing commas in lines
+      .replace(/([^"{}[\],\s])}/g, '$1"}') // Fix missing quotes before }
+      .replace(/([^"{}[\],\s])\]/g, '$1"]') // Fix missing quotes before ]
+      .replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2":') // Ensure property names are quoted
+      .replace(/:\s*'([^']*?)'/g, ':"$1"') // Convert single quotes to double quotes
+      .replace(/,(\s*[}\]])/g, '$1') // Remove trailing commas before closing brackets
+      .replace(/\n\s*([}\]])/g, '$1') // Remove newlines before closing brackets
 
-    // Verify it's valid JSON by parsing and stringifying
-    const parsed = JSON.parse(cleaned)
-    return JSON.stringify(parsed)
+    // Try to parse and re-stringify to validate and format
+    try {
+      const parsed = JSON.parse(cleaned)
+      return JSON.stringify(parsed)
+    } catch (parseError) {
+      console.error('Initial parse failed, attempting additional cleanup:', parseError)
+
+      // Additional cleanup for nested structures
+      cleaned = cleaned
+        .replace(/(\w+):/g, '"$1":') // Quote all unquoted keys
+        .replace(/:\s*'([^']*?)'/g, ':"$1"') // Convert any remaining single quotes to double quotes
+        .replace(/,\s*([\]}])/g, '$1') // Remove any remaining trailing commas
+        .replace(/([^"\\])"/g, '$1\\"') // Escape unescaped quotes within values
+        .replace(/\\/g, '\\\\') // Escape backslashes
+        .replace(/\n/g, '\\n') // Escape newlines
+
+      // Final attempt to parse
+      const parsed = JSON.parse(cleaned)
+      return JSON.stringify(parsed)
+    }
   } catch (error) {
     console.error('Error cleaning JSON response:', error)
     throw error
@@ -62,7 +91,7 @@ async function generateMealsInBatches(
   const meals: GeneratedMeal[] = []
   let retryCount = 0
   const maxRetries = 3
-  const maxJsonRetries = 2 // Max retries for JSON parsing errors
+  const maxJsonRetries = 3 // Increased max retries for JSON parsing errors
 
   while (meals.length < count && retryCount < maxRetries) {
     for (let i = 0; i < batches && meals.length < count; i++) {
@@ -94,7 +123,7 @@ async function generateMealsInBatches(
                 - Health score (1-10)
                 - Detailed macros (calories, protein, carbs, fat, fiber)
                 
-                Return a JSON object with this exact structure:
+                Return ONLY a valid JSON object with this exact structure:
                 {
                   "meals": [
                     {
@@ -127,8 +156,10 @@ async function generateMealsInBatches(
                 2. Names should be descriptive and specific
                 3. Follow dietary preferences: ${preferences}
                 4. Total cost must not exceed ${maxCostPerMeal.toFixed(2)} ${currency} per meal
-                
-                Return ONLY the JSON object, no markdown or code block markers.`
+                5. Return ONLY the JSON object, no additional text or formatting
+                6. Ensure all JSON properties are properly quoted
+                7. Do not include trailing commas
+                8. Use double quotes for strings, not single quotes`
               },
               {
                 role: "user",
@@ -138,6 +169,7 @@ async function generateMealsInBatches(
             model: "gpt-4-turbo-preview",
             temperature: 0.7,
             max_tokens: 2000,
+            response_format: { type: "json_object" }, // Force JSON response format
             seed: Date.now() + i // Use different seed for each batch
           })
 
@@ -159,10 +191,15 @@ async function generateMealsInBatches(
           validResponse = true
         } catch (error) {
           console.error(`JSON parsing error, attempt ${jsonRetries + 1}:`, error)
+          if (error instanceof Error) {
+            console.error('Error details:', error.message)
+          }
           jsonRetries++
           if (jsonRetries >= maxJsonRetries) {
             throw new Error('Failed to parse JSON response after multiple attempts')
           }
+          // Add a small delay before retrying
+          await new Promise(resolve => setTimeout(resolve, 1000))
         }
       }
 
@@ -194,6 +231,8 @@ async function generateMealsInBatches(
     if (meals.length < count) {
       console.log(`Only generated ${meals.length}/${count} meals, retrying...`)
       retryCount++
+      // Add a delay before retrying the whole batch
+      await new Promise(resolve => setTimeout(resolve, 2000))
     }
   }
 
