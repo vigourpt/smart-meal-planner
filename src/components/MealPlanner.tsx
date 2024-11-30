@@ -140,6 +140,50 @@ const MealPlanner = (): JSX.Element => {
     }
   }
 
+  const formatWeekRange = (): string => {
+    const start = new Date(currentWeek)
+    start.setDate(start.getDate() - start.getDay() + 1) // Start from Monday
+    return `Week of ${start.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
+  }
+
+  const handleEmail = (): void => {
+    if (!mealPlan) return
+
+    const formatMeal = (meal: MealPlanItem): string => {
+      if (!meal?.recipe) return ''
+      return `${meal.recipe.name} (${meal.recipe.macros.calories} kcal, ${formatCurrency(meal.recipe.totalCost, currency)})\n` +
+        `Servings: ${meal.servings || preferences.servings}\n` +
+        `\nIngredients:\n${meal.recipe.ingredients.map((ing: { amount: string, name: string }) => `- ${ing.amount} ${ing.name}`).join('\n')}\n` +
+        `\nInstructions:\n${meal.recipe.recipe}\n\n`
+    }
+
+    let emailSubject = `Weekly Meal Plan - ${formatWeekRange()}`
+    let emailBody = `Weekly Meal Plan - ${formatWeekRange()}\n\n`
+
+    DAYS.forEach((day: Day) => {
+      emailBody += `${day}:\n`
+      MEAL_TYPES.forEach((mealType: MealType) => {
+        const meal = mealPlan.meals[`${day}-${mealType}`]
+        if (meal?.recipe) {
+          emailBody += `\n${mealType}:\n${formatMeal(meal)}`
+        }
+      })
+      emailBody += '\n'
+    })
+
+    const totalCost = Object.values(mealPlan.meals).reduce((total, meal) => {
+      if (!meal?.recipe) return total
+      return total + meal.recipe.totalCost
+    }, 0)
+
+    emailBody += `\nTotal Weekly Cost: ${formatCurrency(totalCost, currency)}`
+
+    const encodedSubject = encodeURIComponent(emailSubject)
+    const encodedBody = encodeURIComponent(emailBody)
+
+    window.location.href = `mailto:?subject=${encodedSubject}&body=${encodedBody}`
+  }
+
   if (!apiKey) {
     return <ApiKeyModal />
   }
@@ -152,6 +196,15 @@ const MealPlanner = (): JSX.Element => {
         <h2 className="text-2xl font-bold">Meal Plan</h2>
         <div className="flex items-center space-x-4">
           <div className="flex gap-2 ml-4">
+            {!isEmpty && (
+              <button
+                onClick={handleEmail}
+                className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                <Mail className="h-4 w-4 mr-2" />
+                Email
+              </button>
+            )}
             {isEmpty && (
               <div className="flex flex-col items-end">
                 <button
