@@ -140,10 +140,92 @@ const MealPlanner = (): JSX.Element => {
     }
   }
 
+  const handleRegenerateMeal = async (day: Day, mealType: MealType): Promise<void> => {
+    if (!apiKey) {
+      setError('Please set your OpenAI API key first')
+      return
+    }
+
+    setGeneratingMeal(`${day}-${mealType}`)
+    setError(null)
+
+    try {
+      const preferencesString = `
+        Dietary restrictions: ${preferences.dietary.join(', ')}
+        Allergies: ${preferences.allergies.join(', ')}
+        Cuisine types: ${preferences.cuisineTypes.join(', ')}
+        Servings: ${preferences.servings}
+      `
+
+      const meals = await generateMealsByCategory(mealType.toLowerCase(), 1)
+      if (meals.length > 0) {
+        try {
+          updateMealInPlan(day, mealType, meals[0], preferences.servings)
+          if (mealPlan) {
+            generateShoppingListFromMealPlan(mealPlan)
+          }
+        } catch (budgetError) {
+          setError(budgetError instanceof Error ? budgetError.message : 'Meal exceeds weekly budget')
+          return
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate meal')
+    } finally {
+      setGeneratingMeal(null)
+    }
+  }
+
   const formatWeekRange = (): string => {
     const start = new Date(currentWeek)
     start.setDate(start.getDate() - start.getDay() + 1) // Start from Monday
     return `Week of ${start.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
+  }
+
+  const navigateWeek = (direction: 'prev' | 'next'): void => {
+    const newDate = new Date(currentWeek)
+    newDate.setDate(newDate.getDate() + (direction === 'next' ? 7 : -7))
+    setCurrentWeek(newDate)
+    updateMealPlan({ meals: {} })
+  }
+
+  const handleOpenRecipeSelector = (day: Day, mealType: MealType): void => {
+    setRecipeSelector({ isOpen: true, day, mealType })
+    setContextMenu({ isOpen: false, day: 'Monday', mealType: 'Breakfast', x: 0, y: 0 })
+  }
+
+  const handleCloseRecipeSelector = (): void => {
+    setRecipeSelector({ isOpen: false, day: 'Monday', mealType: 'Breakfast' })
+  }
+
+  const handleSelectRecipe = (recipe: GeneratedMeal): void => {
+    updateMealInPlan(recipeSelector.day, recipeSelector.mealType, recipe, preferences.servings)
+    handleCloseRecipeSelector()
+    if (mealPlan) {
+      generateShoppingListFromMealPlan(mealPlan)
+    }
+  }
+
+  const handleServingsChange = (day: Day, mealType: MealType, servings: number): void => {
+    try {
+      updateMealServings(day, mealType, servings)
+      if (mealPlan) {
+        generateShoppingListFromMealPlan(mealPlan)
+      }
+    } catch (budgetError) {
+      setError(budgetError instanceof Error ? budgetError.message : 'Serving change would exceed weekly budget')
+    }
+  }
+
+  const handleContextMenu = (e: React.MouseEvent, day: Day, mealType: MealType): void => {
+    e.preventDefault()
+    setContextMenu({
+      isOpen: true,
+      day,
+      mealType,
+      x: e.clientX,
+      y: e.clientY
+    })
   }
 
   const handleEmail = (): void => {
@@ -195,6 +277,19 @@ const MealPlanner = (): JSX.Element => {
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">Meal Plan</h2>
         <div className="flex items-center space-x-4">
+          <button
+            onClick={() => navigateWeek('prev')}
+            className="p-1 rounded-full hover:bg-gray-100"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <span className="text-sm font-medium">{formatWeekRange()}</span>
+          <button
+            onClick={() => navigateWeek('next')}
+            className="p-1 rounded-full hover:bg-gray-100"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
           <div className="flex gap-2 ml-4">
             {!isEmpty && (
               <button
@@ -231,6 +326,177 @@ const MealPlanner = (): JSX.Element => {
           {error}
         </div>
       )}
+
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="grid grid-cols-8 divide-x divide-gray-200">
+          {/* Time slots column */}
+          <div className="col-span-1">
+            <div className="h-12"></div>
+            {MEAL_TYPES.map((mealType) => (
+              <div key={mealType} className="h-32 p-2 font-medium text-sm text-gray-500">
+                {mealType}
+              </div>
+            ))}
+          </div>
+
+          {/* Days columns */}
+          {DAYS.map((day) => (
+            <div key={day} className="col-span-1">
+              <div className="h-12 flex items-center justify-center border-b border-gray-200">
+                <span className="text-sm font-medium">{day}</span>
+              </div>
+              {MEAL_TYPES.map((mealType) => {
+                const meal = mealPlan?.meals[`${day}-${mealType}`]
+                const isGeneratingThis = generatingMeal === `${day}-${mealType}`
+                return (
+                  <div key={`${day}-${mealType}`} className="h-32 p-2 border-b border-gray-200">
+                    {meal?.recipe ? (
+                      <div 
+                        className="relative w-full h-full p-2 bg-emerald-50 rounded-lg flex flex-col cursor-pointer hover:bg-emerald-100 transition-colors"
+                        onClick={() => {
+                          setMealDetails({
+                            isOpen: true,
+                            meal: meal.recipe,
+                            servings: meal.servings || preferences.servings
+                          })
+                        }}
+                        onContextMenu={(e) => handleContextMenu(e, day, mealType)}
+                      >
+                        <div className="flex justify-between items-start">
+                          <p className="text-sm font-medium text-emerald-900 truncate">
+                            {meal.recipe.name}
+                          </p>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleContextMenu(e, day, mealType)
+                            }}
+                            className="p-1 hover:bg-emerald-100 rounded"
+                          >
+                            <MoreVertical className="h-4 w-4 text-emerald-600" />
+                          </button>
+                        </div>
+                        <div className="mt-1 text-xs text-emerald-600 space-y-1">
+                          <p>{meal.recipe.macros.calories} kcal</p>
+                          <p>{formatCurrency(meal.recipe.totalCost, currency)}</p>
+                          <div className="flex items-center space-x-1">
+                            <Users className="h-3 w-3" />
+                            <select
+                              value={meal.servings || preferences.servings}
+                              onChange={(e) => {
+                                e.stopPropagation()
+                                handleServingsChange(day, mealType, parseInt(e.target.value))
+                              }}
+                              className="text-xs bg-transparent border-none p-0"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {[1,2,3,4,5,6,7,8].map(num => (
+                                <option key={num} value={num}>{num}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => handleOpenRecipeSelector(day, mealType)}
+                        className="w-full h-full flex items-center justify-center rounded-lg border-2 border-dashed border-gray-300 hover:border-gray-400 transition-colors"
+                      >
+                        {isGeneratingThis ? (
+                          <RefreshCw className="h-5 w-5 text-gray-400 animate-spin" />
+                        ) : (
+                          <Plus className="h-5 w-5 text-gray-400" />
+                        )}
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Context Menu */}
+      {contextMenu.isOpen && (
+        <div
+          className="fixed z-50 bg-white rounded-lg shadow-lg border border-gray-200 py-1 w-48"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+        >
+          <div className="px-3 py-2 text-sm font-medium text-gray-900 border-b border-gray-200">
+            Select Action
+          </div>
+          <button
+            onClick={() => {
+              const meal = mealPlan?.meals[`${contextMenu.day}-${contextMenu.mealType}`]
+              if (meal) {
+                setMealDetails({
+                  isOpen: true,
+                  meal: meal.recipe,
+                  servings: meal.servings || preferences.servings
+                })
+                setContextMenu({ isOpen: false, day: 'Monday', mealType: 'Breakfast', x: 0, y: 0 })
+              }
+            }}
+            className="w-full px-3 py-2 text-sm text-left hover:bg-gray-100 flex items-center"
+          >
+            <Eye className="h-4 w-4 mr-2" />
+            View Meal
+          </button>
+          <button
+            onClick={() => {
+              handleRegenerateMeal(contextMenu.day, contextMenu.mealType)
+              setContextMenu({ isOpen: false, day: 'Monday', mealType: 'Breakfast', x: 0, y: 0 })
+            }}
+            className="w-full px-3 py-2 text-sm text-left hover:bg-gray-100 flex items-center"
+          >
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Regenerate Meal
+          </button>
+          <button
+            onClick={() => handleOpenRecipeSelector(contextMenu.day, contextMenu.mealType)}
+            className="w-full px-3 py-2 text-sm text-left hover:bg-gray-100 flex items-center"
+          >
+            <List className="h-4 w-4 mr-2" />
+            Select from Saved
+          </button>
+        </div>
+      )}
+
+      {recipeSelector.isOpen && (
+        <RecipeSelector
+          isOpen={recipeSelector.isOpen}
+          onClose={handleCloseRecipeSelector}
+          onSelect={handleSelectRecipe}
+          day={recipeSelector.day}
+          mealType={recipeSelector.mealType}
+        />
+      )}
+
+      {mealDetails.meal && (
+        <MealDetailsModal
+          isOpen={mealDetails.isOpen}
+          onClose={() => setMealDetails({ isOpen: false, meal: null, servings: 4 })}
+          meal={mealDetails.meal}
+          servings={mealDetails.servings}
+          currency={currency}
+        />
+      )}
+
+      {/* Click outside handler for context menu */}
+      {contextMenu.isOpen && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setContextMenu({ isOpen: false, day: 'Monday', mealType: 'Breakfast', x: 0, y: 0 })}
+        />
+      )}
+
+      {/* Hidden iframe for printing */}
+      <iframe
+        ref={printFrameRef}
+        style={{ display: 'none' }}
+        title="Print Frame"
+      />
     </div>
   )
 }
