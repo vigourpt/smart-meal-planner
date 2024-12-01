@@ -1,246 +1,117 @@
-import React, { useState } from 'react';
-import { 
-  Utensils, 
-  DollarSign, 
-  Clock, 
-  TrendingUp,
-  RotateCcw,
-  Wand2,
-  Loader2
-} from 'lucide-react';
-import { useStore } from '../lib/store';
-import { formatCurrency } from '../lib/currency';
-import { generateFullMealPlan } from '../lib/openai';
-import { saveMeal } from '../lib/firebase';
-import confetti from 'canvas-confetti';
+import React from 'react'
+import { useStore } from '../lib/store'
+import { ChefHat, DollarSign, Clock, LineChart } from 'lucide-react'
+import { formatCurrency } from '../lib/currency'
 
-export function Dashboard() {
-  const [isGenerating, setIsGenerating] = useState(false);
-  const { 
-    mealPlan, 
-    updateMealPlan,
-    shoppingList,
-    currency,
-    resetShoppingListSpending,
-    addSavedMeal,
-    generateShoppingListFromMealPlan,
-    weeklyBudget,
-    preferences
-  } = useStore(state => ({
+export const Dashboard = (): JSX.Element => {
+  const { mealPlan, preferences, currency } = useStore(state => ({
     mealPlan: state.mealPlan,
-    updateMealPlan: state.updateMealPlan,
-    shoppingList: state.shoppingList,
-    currency: state.settings.currency,
-    resetShoppingListSpending: state.resetShoppingListSpending,
-    addSavedMeal: state.addSavedMeal,
-    generateShoppingListFromMealPlan: state.generateShoppingListFromMealPlan,
-    weeklyBudget: state.preferences.weeklyBudget,
-    preferences: state.preferences
-  }));
+    preferences: state.preferences,
+    currency: state.settings.currency
+  }))
 
-  const currentSpending = shoppingList.reduce((total, item) => total + item.ingredient.estimatedCost, 0);
-  const avgPrepTime = mealPlan 
-    ? Object.values(mealPlan.meals)
-        .filter(meal => meal.recipe)
-        .reduce((sum, meal) => sum + meal.recipe!.prepTime, 0) / 
-      Object.values(mealPlan.meals).filter(meal => meal.recipe).length || 0
-    : 0;
-  const healthScore = mealPlan
-    ? Object.values(mealPlan.meals)
-        .filter(meal => meal.recipe)
-        .reduce((sum, meal) => sum + meal.recipe!.healthScore, 0) /
-      Object.values(mealPlan.meals).filter(meal => meal.recipe).length || 0
-    : 0;
-  const totalMealsPlanned = mealPlan ? Object.values(mealPlan.meals).filter(meal => meal.recipe).length : 0;
-  const totalPossibleMeals = 28; // 4 meals a day (including snacks) for 7 days
+  const totalMeals = mealPlan ? Object.keys(mealPlan.meals).length : 0
+  const totalPlannedMeals = 28 // 7 days * 4 meals per day
 
-  const handleResetSpending = () => {
-    resetShoppingListSpending();
-  };
+  const totalCost = mealPlan ? Object.values(mealPlan.meals).reduce((total, meal) => {
+    if (!meal?.recipe) return total
+    return total + meal.recipe.totalCost
+  }, 0) : 0
 
-  const handleAutoGenerate = async () => {
-    try {
-      setIsGenerating(true);
-      const preferencesString = `
-        Dietary restrictions: ${preferences.dietary.join(', ')}
-        Allergies: ${preferences.allergies.join(', ')}
-        Cuisine types: ${preferences.cuisineTypes.join(', ')}
-        Servings: ${preferences.servings}
-      `;
+  const avgPrepTime = mealPlan ? Object.values(mealPlan.meals).reduce((total, meal) => {
+    if (!meal?.recipe) return total
+    return total + meal.recipe.prepTime
+  }, 0) / (totalMeals || 1) : 0
 
-      console.log('Generating meal plan with preferences:', preferencesString);
-      const result = await generateFullMealPlan(preferencesString);
-      console.log('Generated meal plan:', result);
-      
-      if (!result || !result.meals || !Array.isArray(result.meals)) {
-        throw new Error('Invalid meal plan response');
-      }
-
-      // Save each meal to Firebase and store
-      const savedMeals = await Promise.all(result.meals.map(async (meal) => {
-        try {
-          const id = await saveMeal(meal);
-          const savedMeal = { ...meal, id };
-          addSavedMeal(savedMeal);
-          return savedMeal;
-        } catch (error) {
-          console.error('Error saving meal:', error);
-          return meal;
-        }
-      }));
-
-      // Organize meals by type
-      const mealsByType = {
-        breakfast: savedMeals.filter(meal => meal.category === 'breakfast'),
-        lunch: savedMeals.filter(meal => meal.category === 'lunch'),
-        dinner: savedMeals.filter(meal => meal.category === 'dinner'),
-        snack: savedMeals.filter(meal => meal.category === 'snack')
-      };
-
-      // Ensure we have enough unique meals for each type
-      if (Object.values(mealsByType).some(meals => meals.length < 7)) {
-        throw new Error('Not enough unique meals generated for each category');
-      }
-
-      const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-      const mealTypes = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
-
-      // Create meal plan ensuring different meals each day
-      const newMealPlan = {
-        meals: days.reduce((acc, day, dayIndex) => {
-          mealTypes.forEach((type, typeIndex) => {
-            const lowerType = type.toLowerCase();
-            const meals = mealsByType[lowerType as keyof typeof mealsByType];
-            // Use dayIndex to ensure different meals each day
-            acc[`${day}-${type}`] = { recipe: meals[dayIndex] };
-          });
-          return acc;
-        }, {} as Record<string, { recipe: any }>)
-      };
-
-      console.log('Updating meal plan:', newMealPlan);
-      updateMealPlan(newMealPlan);
-      generateShoppingListFromMealPlan(newMealPlan);
-
-      // Trigger confetti
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 }
-      });
-    } catch (error) {
-      console.error('Error generating meal plan:', error);
-      alert('Failed to generate meal plan. Please check the console for details.');
-    } finally {
-      setIsGenerating(false);
-    }
-  };
+  const healthScore = mealPlan ? Object.values(mealPlan.meals).reduce((total, meal) => {
+    if (!meal?.recipe) return total
+    return total + meal.recipe.healthScore
+  }, 0) / (totalMeals || 1) : 0
 
   return (
     <div className="space-y-8">
-      <h2 className="text-2xl font-bold">Meal Planner</h2>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-emerald-500 rounded-lg p-6 text-white">
+      <div className="grid gap-6 md:grid-cols-4">
+        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-6 rounded-lg shadow-lg text-white">
           <div className="flex items-center justify-between">
-            <Utensils className="h-6 w-6" />
-            <h3 className="text-lg font-medium">Weekly Meals</h3>
+            <div>
+              <p className="text-emerald-100">Weekly Meals</p>
+              <h3 className="text-3xl font-bold mt-1">{totalMeals}/{totalPlannedMeals}</h3>
+            </div>
+            <ChefHat className="h-8 w-8 text-emerald-200" />
           </div>
-          <div className="mt-4">
-            <p className="text-3xl font-bold">{totalMealsPlanned}/{totalPossibleMeals}</p>
-            <p className="text-sm opacity-90">Meals Planned</p>
-          </div>
+          <p className="text-sm text-emerald-100 mt-2">Meals Planned</p>
         </div>
 
-        <div className="bg-blue-500 rounded-lg p-6 text-white">
+        <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-6 rounded-lg shadow-lg text-white">
           <div className="flex items-center justify-between">
-            <DollarSign className="h-6 w-6" />
-            <h3 className="text-lg font-medium">Budget</h3>
+            <div>
+              <p className="text-blue-100">Weekly Spending</p>
+              <h3 className="text-3xl font-bold mt-1">{formatCurrency(totalCost, currency)}</h3>
+            </div>
+            <DollarSign className="h-8 w-8 text-blue-200" />
           </div>
-          <div className="mt-4">
-            <p className="text-3xl font-bold">
-              {formatCurrency(currentSpending, currency)}/{formatCurrency(weeklyBudget, currency)}
-            </p>
-            <p className="text-sm opacity-90">Weekly Spending</p>
-          </div>
+          <p className="text-sm text-blue-100 mt-2">Budget Management</p>
         </div>
 
-        <div className="bg-purple-500 rounded-lg p-6 text-white">
+        <div className="bg-gradient-to-br from-purple-500 to-pink-600 p-6 rounded-lg shadow-lg text-white">
           <div className="flex items-center justify-between">
-            <Clock className="h-6 w-6" />
-            <h3 className="text-lg font-medium">Prep Time</h3>
+            <div>
+              <p className="text-purple-100">Prep Time</p>
+              <h3 className="text-3xl font-bold mt-1">{Math.round(avgPrepTime)} min</h3>
+            </div>
+            <Clock className="h-8 w-8 text-purple-200" />
           </div>
-          <div className="mt-4">
-            <p className="text-3xl font-bold">{Math.round(avgPrepTime || 0)} min</p>
-            <p className="text-sm opacity-90">Avg. per Meal</p>
-          </div>
+          <p className="text-sm text-purple-100 mt-2">Avg. per Meal</p>
         </div>
 
-        <div className="bg-orange-500 rounded-lg p-6 text-white">
+        <div className="bg-gradient-to-br from-orange-500 to-red-600 p-6 rounded-lg shadow-lg text-white">
           <div className="flex items-center justify-between">
-            <TrendingUp className="h-6 w-6" />
-            <h3 className="text-lg font-medium">Health Score</h3>
+            <div>
+              <p className="text-orange-100">Health Score</p>
+              <h3 className="text-3xl font-bold mt-1">{healthScore.toFixed(1)}/10</h3>
+            </div>
+            <LineChart className="h-8 w-8 text-orange-200" />
           </div>
-          <div className="mt-4">
-            <p className="text-3xl font-bold">{healthScore.toFixed(1)}/10</p>
-            <p className="text-sm opacity-90">Based on Nutrition</p>
-          </div>
+          <p className="text-sm text-orange-100 mt-2">Based on Nutrition</p>
         </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex justify-end space-x-4">
-        <button
-          onClick={handleResetSpending}
-          className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-        >
-          <RotateCcw className="h-4 w-4 mr-2" />
-          Reset Spending
-        </button>
-        <button
-          onClick={handleAutoGenerate}
-          disabled={isGenerating}
-          className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-            isGenerating ? 'bg-emerald-400' : 'bg-emerald-600 hover:bg-emerald-700'
-          }`}
-        >
-          {isGenerating ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <Wand2 className="h-4 w-4 mr-2" />
-          )}
-          {isGenerating ? 'Generating...' : 'Auto Generate Plan'}
-        </button>
-      </div>
-
-      {/* Quick Start Guide */}
-      <div className="bg-emerald-50 rounded-lg p-6">
-        <h3 className="text-lg font-medium text-emerald-900 mb-4">Quick Start Guide</h3>
-        <div className="grid md:grid-cols-3 gap-6">
-          <div className="flex items-start">
-            <span className="flex-shrink-0 flex items-center justify-center h-6 w-6 rounded-full bg-emerald-200 text-emerald-800 text-sm font-medium">1</span>
-            <div className="ml-3">
-              <h4 className="text-sm font-medium text-emerald-900">Set Your Preferences</h4>
-              <p className="mt-1 text-sm text-emerald-700">Visit your profile to set dietary preferences, allergies, and health goals.</p>
+      {/* FAQs */}
+      <div className="bg-gradient-to-br from-gray-50 to-slate-50 p-6 rounded-lg shadow-sm border border-gray-200">
+        <h2 className="text-xl font-semibold text-gray-900 mb-6">Frequently Asked Questions</h2>
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="space-y-4">
+            <div>
+              <h3 className="font-medium text-gray-900">How does meal generation work?</h3>
+              <p className="mt-1 text-sm text-gray-600">Our AI analyzes your preferences, dietary restrictions, and nutritional goals to generate personalized meal plans that fit your needs.</p>
+            </div>
+            <div>
+              <h3 className="font-medium text-gray-900">Can I customize generated meals?</h3>
+              <p className="mt-1 text-sm text-gray-600">Yes! You can adjust servings, swap ingredients, or replace entire meals from our recipe database.</p>
+            </div>
+            <div>
+              <h3 className="font-medium text-gray-900">How is the health score calculated?</h3>
+              <p className="mt-1 text-sm text-gray-600">The health score considers nutritional balance, caloric content, and alignment with dietary guidelines.</p>
             </div>
           </div>
-          <div className="flex items-start">
-            <span className="flex-shrink-0 flex items-center justify-center h-6 w-6 rounded-full bg-emerald-200 text-emerald-800 text-sm font-medium">2</span>
-            <div className="ml-3">
-              <h4 className="text-sm font-medium text-emerald-900">Configure Budget</h4>
-              <p className="mt-1 text-sm text-emerald-700">Set your weekly budget and preferred currency in settings.</p>
+          <div className="space-y-4">
+            <div>
+              <h3 className="font-medium text-gray-900">How accurate are the cost estimates?</h3>
+              <p className="mt-1 text-sm text-gray-600">Costs are estimated based on average prices in your region and are updated regularly for accuracy.</p>
             </div>
-          </div>
-          <div className="flex items-start">
-            <span className="flex-shrink-0 flex items-center justify-center h-6 w-6 rounded-full bg-emerald-200 text-emerald-800 text-sm font-medium">3</span>
-            <div className="ml-3">
-              <h4 className="text-sm font-medium text-emerald-900">Plan Your Meals</h4>
-              <p className="mt-1 text-sm text-emerald-700">Use Auto Generate or manually select meals for your week.</p>
+            <div>
+              <h3 className="font-medium text-gray-900">Can I save my favorite meals?</h3>
+              <p className="mt-1 text-sm text-gray-600">Yes! Save any meal to your favorites for quick access when planning future weeks.</p>
+            </div>
+            <div>
+              <h3 className="font-medium text-gray-900">How do I share my meal plan?</h3>
+              <p className="mt-1 text-sm text-gray-600">Use the email button to share your complete meal plan, including recipes and shopping list.</p>
             </div>
           </div>
         </div>
       </div>
     </div>
-  );
+  )
 }
+
+export default Dashboard
