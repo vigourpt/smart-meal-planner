@@ -1,293 +1,123 @@
 import { create } from 'zustand'
-import type { GeneratedMeal, Ingredient } from './firebase'
-
-export interface DietPlan {
-  type: 'bulletproof' | 'intermittent_fasting' | 'slimming_world' | null
-  settings: {
-    // Bulletproof settings
-    bulletproofWindow?: {
-      start: string // HH:mm format
-      end: string
-    }
-    // Intermittent fasting settings
-    fastingWindow?: {
-      start: string // HH:mm format
-      end: string
-    }
-    // Slimming World settings
-    weeklySyms?: number
-  }
-}
+import type { GeneratedMeal } from './firebase'
 
 export interface UserPreferences {
   dietary: string[]
   allergies: string[]
+  goals: string[]
   cuisineTypes: string[]
   servings: number
-  weeklyBudget: number
-  dietPlan: DietPlan
-}
-
-export interface MealPlanItem {
-  recipe: GeneratedMeal | null
-  servings?: number
+  [key: string]: any
 }
 
 export interface MealPlan {
-  meals: Record<string, MealPlanItem>
+  meals: {
+    [key: number]: {
+      recipe: GeneratedMeal
+    }
+  }
+}
+
+export interface Ingredient {
+  name: string
+  amount: string
+  estimatedCost: number
 }
 
 export interface ShoppingListItem {
+  name: string
+  quantity: number
+  unit: string
+  cost: number
+  checked: boolean
   ingredient: Ingredient
   purchased: boolean
-  originalServings: number
-  adjustedServings: number
 }
 
-interface Settings {
-  darkMode: boolean
-  apiKey: string | null
+export interface DietPlan {
+  calories: number
+  protein: number
+  carbs: number
+  fat: number
+  type: string | null
+  settings?: {
+    [key: string]: any
+  }
+}
+
+export interface Settings {
   currency: string
-  toggleDarkMode: () => void
+  apiKey: string
+  weeklyBudget: number
+}
+
+interface State {
+  mealPlan: MealPlan
+  preferences: UserPreferences
+  settings: Settings
+  shoppingList: ShoppingListItem[]
+  dietPlan: DietPlan
+  setMealPlan: (mealPlan: MealPlan) => void
   setApiKey: (key: string) => void
   setCurrency: (currency: string) => void
-}
-
-export interface State {
-  settings: Settings
-  mealPlan: MealPlan | null
-  preferences: UserPreferences
-  shoppingList: ShoppingListItem[]
-  savedMeals: {
-    [category: string]: GeneratedMeal[]
-  }
-  updateMealPlan: (mealPlan: MealPlan) => void
-  updateMealInPlan: (day: string, mealType: string, recipe: GeneratedMeal | null, servings?: number) => void
-  updateMealServings: (day: string, mealType: string, servings: number) => void
+  updatePreferences: (preferences: Partial<UserPreferences>) => void
+  updateDietPlan: (plan: Partial<DietPlan>) => void
+  updateWeeklyBudget: (budget: number) => void
   updateShoppingList: (items: ShoppingListItem[]) => void
   resetShoppingListSpending: () => void
-  generateShoppingListFromMealPlan: (mealPlan: MealPlan) => void
-  updatePreferences: (preferences: Partial<UserPreferences>) => void
-  addSavedMeal: (meal: GeneratedMeal) => void
-  updateWeeklyBudget: (amount: number) => void
-  updateDietPlan: (plan: DietPlan) => void
 }
 
-function adjustForServings(value: number, originalServings: number, newServings: number): number {
-  return (value * newServings) / originalServings
+// Initialize with default values
+const initialMealPlan: MealPlan = {
+  meals: {}
 }
 
-function adjustIngredientForServings(ingredient: Ingredient, originalServings: number, newServings: number): Ingredient {
-  return {
-    ...ingredient,
-    amount: ingredient.amount.replace(/\d+(\.\d+)?/g, (match) => {
-      const num = parseFloat(match)
-      return adjustForServings(num, originalServings, newServings).toFixed(2)
-    }),
-    estimatedCost: adjustForServings(ingredient.estimatedCost, originalServings, newServings)
-  }
+const initialPreferences: UserPreferences = {
+  dietary: [],
+  allergies: [],
+  goals: [],
+  cuisineTypes: [],
+  servings: 4
 }
 
-function calculateMealPlanCost(mealPlan: MealPlan): number {
-  return Object.values(mealPlan.meals).reduce((total: number, meal: MealPlanItem) => {
-    if (!meal.recipe) return total
-    return total + meal.recipe.totalCost
-  }, 0)
+const initialSettings: Settings = {
+  currency: 'USD',
+  apiKey: '',
+  weeklyBudget: 0
 }
 
-export const useStore = create<State>((set, get) => ({
-  settings: {
-    darkMode: false,
-    apiKey: localStorage.getItem('openai_api_key'),
-    currency: localStorage.getItem('currency') || 'USD',
-    toggleDarkMode: () =>
-      set((state: State) => ({
-        settings: {
-          ...state.settings,
-          darkMode: !state.settings.darkMode
-        }
-      })),
-    setApiKey: (key: string) => {
-      localStorage.setItem('openai_api_key', key)
-      set((state: State) => ({
-        settings: {
-          ...state.settings,
-          apiKey: key
-        }
-      }))
-    },
-    setCurrency: (currency: string) => {
-      localStorage.setItem('currency', currency)
-      set((state: State) => ({
-        settings: {
-          ...state.settings,
-          currency
-        }
-      }))
-    }
-  },
-  mealPlan: null,
-  preferences: {
-    dietary: [],
-    allergies: [],
-    cuisineTypes: [],
-    servings: 4,
-    weeklyBudget: 150,
-    dietPlan: {
-      type: null,
-      settings: {}
-    }
-  },
+const initialDietPlan: DietPlan = {
+  calories: 2000,
+  protein: 150,
+  carbs: 200,
+  fat: 65,
+  type: 'balanced'
+}
+
+export const useStore = create<State>((set) => ({
+  mealPlan: initialMealPlan,
+  preferences: initialPreferences,
+  settings: initialSettings,
   shoppingList: [],
-  savedMeals: {
-    breakfast: [],
-    lunch: [],
-    dinner: [],
-    snack: []
-  },
-  updateMealPlan: (mealPlan: MealPlan) => {
-    const totalCost = calculateMealPlanCost(mealPlan)
-    const state = get()
-    if (totalCost > state.preferences.weeklyBudget) {
-      throw new Error(`Meal plan cost (${totalCost}) exceeds weekly budget (${state.preferences.weeklyBudget})`)
-    }
-    set(() => ({ mealPlan }))
-  },
-  updateMealInPlan: (day: string, mealType: string, recipe: GeneratedMeal | null, servings?: number) =>
-    set((state: State) => {
-      const currentMealPlan = state.mealPlan || { meals: {} }
-      const newMealPlan = {
-        meals: {
-          ...currentMealPlan.meals,
-          [`${day}-${mealType}`]: { recipe, servings: servings || state.preferences.servings }
-        }
-      }
-      
-      if (recipe) {
-        const totalCost = calculateMealPlanCost(newMealPlan)
-        if (totalCost > state.preferences.weeklyBudget) {
-          throw new Error(`Adding this meal would exceed weekly budget (${state.preferences.weeklyBudget})`)
-        }
-      }
-
-      return { mealPlan: newMealPlan }
-    }),
-  updateMealServings: (day: string, mealType: string, servings: number) =>
-    set((state: State) => {
-      if (!state.mealPlan) return state
-
-      const mealKey = `${day}-${mealType}`
-      const meal = state.mealPlan.meals[mealKey]
-      if (!meal?.recipe) return state
-
-      const originalServings = meal.servings || state.preferences.servings
-      const recipe = meal.recipe
-
-      const adjustedRecipe = {
-        ...recipe,
-        ingredients: recipe.ingredients.map((ing: Ingredient) => 
-          adjustIngredientForServings(ing, originalServings, servings)
-        ),
-        totalCost: adjustForServings(recipe.totalCost, originalServings, servings),
-        macros: {
-          calories: adjustForServings(recipe.macros.calories, originalServings, servings),
-          protein: adjustForServings(recipe.macros.protein, originalServings, servings),
-          carbs: adjustForServings(recipe.macros.carbs, originalServings, servings),
-          fat: adjustForServings(recipe.macros.fat, originalServings, servings),
-          fiber: adjustForServings(recipe.macros.fiber, originalServings, servings)
-        }
-      }
-
-      const newMealPlan = {
-        meals: {
-          ...state.mealPlan.meals,
-          [mealKey]: { recipe: adjustedRecipe, servings }
-        }
-      }
-
-      const totalCost = calculateMealPlanCost(newMealPlan)
-      if (totalCost > state.preferences.weeklyBudget) {
-        throw new Error(`Adjusting servings would exceed weekly budget (${state.preferences.weeklyBudget})`)
-      }
-
-      return { mealPlan: newMealPlan }
-    }),
-  updateShoppingList: (items: ShoppingListItem[]) =>
-    set(() => ({
-      shoppingList: items
-    })),
-  resetShoppingListSpending: () =>
-    set((state: State) => ({
-      shoppingList: state.shoppingList.map((item: ShoppingListItem) => ({
-        ...item,
-        purchased: false
-      })),
-      mealPlan: null
-    })),
-  generateShoppingListFromMealPlan: (mealPlan: MealPlan) => {
-    const allIngredients = Object.entries(mealPlan.meals)
-      .filter(([_, meal]) => meal.recipe)
-      .flatMap(([_, meal]) => {
-        const servings = meal.servings || 4
-        return meal.recipe!.ingredients.map((ingredient: Ingredient) => ({
-          ingredient,
-          originalServings: 4,
-          adjustedServings: servings
-        }))
-      })
-    
-    const ingredientMap = new Map<string, ShoppingListItem>()
-    
-    allIngredients.forEach(({ ingredient, originalServings, adjustedServings }) => {
-      const existing = ingredientMap.get(ingredient.name)
-      if (existing) {
-        const adjustedCost = adjustForServings(ingredient.estimatedCost, originalServings, adjustedServings)
-        ingredientMap.set(ingredient.name, {
-          ...existing,
-          ingredient: {
-            ...existing.ingredient,
-            estimatedCost: existing.ingredient.estimatedCost + adjustedCost
-          }
-        })
-      } else {
-        const adjustedIngredient = adjustIngredientForServings(ingredient, originalServings, adjustedServings)
-        ingredientMap.set(ingredient.name, {
-          ingredient: adjustedIngredient,
-          purchased: false,
-          originalServings,
-          adjustedServings
-        })
-      }
-    })
-
-    set({ shoppingList: Array.from(ingredientMap.values()) })
-  },
-  updatePreferences: (newPreferences: Partial<UserPreferences>) =>
-    set((state: State) => ({
-      preferences: {
-        ...state.preferences,
-        ...newPreferences
-      }
-    })),
-  addSavedMeal: (meal: GeneratedMeal) =>
-    set((state: State) => ({
-      savedMeals: {
-        ...state.savedMeals,
-        [meal.category]: [...(state.savedMeals[meal.category] || []), meal]
-      }
-    })),
-  updateWeeklyBudget: (amount: number) =>
-    set((state: State) => ({
-      preferences: {
-        ...state.preferences,
-        weeklyBudget: amount
-      }
-    })),
-  updateDietPlan: (plan: DietPlan) =>
-    set((state: State) => ({
-      preferences: {
-        ...state.preferences,
-        dietPlan: plan
-      }
-    }))
+  dietPlan: initialDietPlan,
+  setMealPlan: (mealPlan) => set({ mealPlan }),
+  setApiKey: (apiKey) => set((state) => ({
+    settings: { ...state.settings, apiKey }
+  })),
+  setCurrency: (currency) => set((state) => ({
+    settings: { ...state.settings, currency }
+  })),
+  updatePreferences: (preferences) => set((state) => ({
+    preferences: { ...state.preferences, ...preferences }
+  })),
+  updateDietPlan: (dietPlan) => set((state) => ({
+    dietPlan: { ...state.dietPlan, ...dietPlan }
+  })),
+  updateWeeklyBudget: (weeklyBudget) => set((state) => ({
+    settings: { ...state.settings, weeklyBudget }
+  })),
+  updateShoppingList: (shoppingList) => set({ shoppingList }),
+  resetShoppingListSpending: () => set((state) => ({
+    shoppingList: state.shoppingList.map(item => ({ ...item, purchased: false }))
+  }))
 }))
