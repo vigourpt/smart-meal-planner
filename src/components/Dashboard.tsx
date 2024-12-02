@@ -30,6 +30,42 @@ export const Dashboard = (): JSX.Element => {
 
   return (
     <div className="space-y-8">
+      <div className="flex justify-end space-x-4">
+        <button className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50">
+          Reset Spending
+        </button>
+        <button className="px-4 py-2 text-white bg-emerald-600 rounded-md shadow-sm hover:bg-emerald-700">
+          Auto Generate Plan
+        </button>
+      </div>
+
+      <div className="bg-green-50 p-6 rounded-lg">
+        <h2 className="text-xl font-semibold text-gray-900 mb-6">Quick Start Guide</h2>
+        <div className="grid gap-6 md:grid-cols-3">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-emerald-700">
+              <span className="bg-emerald-100 rounded-full w-6 h-6 flex items-center justify-center text-sm font-medium">1</span>
+              <h3 className="font-medium">Set Your Preferences</h3>
+            </div>
+            <p className="text-sm text-emerald-600 ml-8">Visit your profile to set dietary preferences, allergies, and health goals.</p>
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-emerald-700">
+              <span className="bg-emerald-100 rounded-full w-6 h-6 flex items-center justify-center text-sm font-medium">2</span>
+              <h3 className="font-medium">Configure Budget</h3>
+            </div>
+            <p className="text-sm text-emerald-600 ml-8">Set your weekly budget and preferred currency in settings.</p>
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-emerald-700">
+              <span className="bg-emerald-100 rounded-full w-6 h-6 flex items-center justify-center text-sm font-medium">3</span>
+              <h3 className="font-medium">Plan Your Meals</h3>
+            </div>
+            <p className="text-sm text-emerald-600 ml-8">Use Auto Generate or manually select meals for your week.</p>
+          </div>
+        </div>
+      </div>
+
       <div className="grid gap-6 md:grid-cols-4">
         <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-6 rounded-lg shadow-lg text-white">
           <div className="flex items-center justify-between">
