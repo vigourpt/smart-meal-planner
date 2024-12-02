@@ -1,6 +1,6 @@
 import React from 'react'
 import { useStore } from '../lib/store'
-import { ChefHat, DollarSign, Clock, LineChart, FileText } from 'lucide-react'
+import { ChefHat, DollarSign, Clock, LineChart } from 'lucide-react'
 import { formatCurrency } from '../lib/currency'
 
 export const Dashboard = (): JSX.Element => {
@@ -30,19 +30,6 @@ export const Dashboard = (): JSX.Element => {
 
   return (
     <div className="space-y-8">
-      <div className="flex justify-end space-x-4">
-        <button className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 flex items-center gap-2">
-          <FileText className="h-4 w-4" />
-          Print Meal Plan & Recipes
-        </button>
-        <button className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50">
-          Reset Spending
-        </button>
-        <button className="px-4 py-2 text-white bg-emerald-600 rounded-md shadow-sm hover:bg-emerald-700">
-          Auto Generate Plan
-        </button>
-      </div>
-
       <div className="bg-green-50 p-6 rounded-lg">
         <h2 className="text-xl font-semibold text-gray-900 mb-6">Quick Start Guide</h2>
         <div className="grid gap-6 md:grid-cols-3">

@@ -53,9 +53,21 @@ export const MealPlanner = (): JSX.Element => {
     }
   }
 
+  // Helper function to get the day name
+  const getDayName = (index: number): string => {
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    return days[Math.floor(index / 4)]
+  }
+
+  // Helper function to get the meal type
+  const getMealType = (index: number): string => {
+    const meals = ['Breakfast', 'Lunch', 'Dinner', 'Snack']
+    return meals[index % 4]
+  }
+
   return (
-    <div>
-      <div className="flex justify-end space-x-4 mb-6">
+    <div className="space-y-6">
+      <div className="flex justify-end space-x-4">
         <button 
           onClick={handlePrint}
           className="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 flex items-center gap-2"
@@ -79,7 +91,41 @@ export const MealPlanner = (): JSX.Element => {
         </button>
       </div>
 
-      {/* Rest of MealPlanner component */}
+      {/* Meal Planner Calendar */}
+      <div className="grid grid-cols-7 gap-4">
+        {Array.from({ length: 7 }).map((_, dayIndex) => (
+          <div key={dayIndex} className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900">{getDayName(dayIndex * 4)}</h3>
+            <div className="space-y-2">
+              {Array.from({ length: 4 }).map((_, mealIndex) => {
+                const index = dayIndex * 4 + mealIndex
+                const meal = mealPlan.meals[index]
+
+                return (
+                  <div
+                    key={mealIndex}
+                    className="p-4 bg-white rounded-lg border border-gray-200 hover:border-emerald-500 cursor-pointer transition-colors"
+                  >
+                    <div className="text-sm font-medium text-gray-500 mb-2">
+                      {getMealType(mealIndex)}
+                    </div>
+                    {meal?.recipe ? (
+                      <div>
+                        <div className="font-medium text-gray-900">{meal.recipe.name}</div>
+                        <div className="text-sm text-gray-500 mt-1">
+                          {meal.recipe.prepTime} min • {meal.recipe.healthScore}/10
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-gray-400">Click to add meal</div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
